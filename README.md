@@ -150,7 +150,134 @@ gameDOOM/
 
 ## 👥 Anggota Tim
 
-| Nama | NIM |
-|------|-----|
-| *(isi nama)* | *(isi NIM)* |
-| *(isi nama)* | *(isi NIM)* |
+| Nama | NIM | Branch |
+|------|-----|--------|
+| *(isi nama)* | *(isi NIM)* | `dev/orang1` |
+| *(isi nama)* | *(isi NIM)* | `dev/orang2` |
+| *(isi nama)* | *(isi NIM)* | `dev/orang3` |
+| *(isi nama)* | *(isi NIM)* | `dev/orang4` |
+
+---
+
+## 🌿 Panduan Kolaborasi Git (4 Orang)
+
+### Struktur Branch
+
+```
+main                  ← Branch utama (STABIL, selalu bisa dijalankan)
+└── dev               ← Branch integrasi (semua fitur dikumpulkan di sini)
+    ├── dev/orang1    ← Branch milik anggota 1
+    ├── dev/orang2    ← Branch milik anggota 2
+    ├── dev/orang3    ← Branch milik anggota 3
+    └── dev/orang4    ← Branch milik anggota 4
+```
+
+> **Aturan Utama:**
+> - ❌ **JANGAN push langsung ke `main`**
+> - ✅ Kerjakan di branch sendiri, lalu merge ke `dev`, baru ke `main`
+
+---
+
+### 🔧 Setup Awal (Lakukan Sekali)
+
+**Clone repo dan buat branch masing-masing:**
+
+```bash
+# Clone repo
+git clone https://github.com/ZkaZF/gameDOOM.git
+cd gameDOOM
+
+# Buat branch dev (jika belum ada)
+git checkout -b dev
+git push origin dev
+
+# Buat branch pribadi dari dev (ganti "orang1" sesuai nama/nim)
+git checkout -b dev/orang1
+git push origin dev/orang1
+```
+
+---
+
+### 📅 Alur Kerja Harian
+
+**Setiap kali mau mulai coding:**
+
+```bash
+# 1. Pastikan branch kamu aktif
+git checkout dev/orang1
+
+# 2. Ambil update terbaru dari dev (biar tidak ketinggalan)
+git fetch origin
+git merge origin/dev
+
+# 3. Mulai koding...
+
+# 4. Simpan perubahan
+git add .
+git commit -m "feat: tambah fitur XYZ"
+
+# 5. Push ke branch sendiri
+git push origin dev/orang1
+```
+
+---
+
+### 🔀 Merge ke `dev` (Setelah Fitur Selesai)
+
+```bash
+# 1. Pindah ke branch dev
+git checkout dev
+
+# 2. Ambil update terbaru dari remote
+git pull origin dev
+
+# 3. Merge branch kamu ke dev
+git merge dev/orang1
+
+# 4. Jika ada konflik, selesaikan dulu lalu:
+git add .
+git commit -m "merge: gabung fitur orang1 ke dev"
+
+# 5. Push ke remote
+git push origin dev
+```
+
+---
+
+### 🚀 Merge ke `main` (Setelah Semua Fitur Stabil)
+
+> Lakukan ini bersama-sama saat milestone (V2, V3, dst.) sudah siap.
+
+```bash
+# 1. Pindah ke main
+git checkout main
+
+# 2. Merge dari dev
+git merge dev
+
+# 3. Push ke remote
+git push origin main
+```
+
+---
+
+### 💡 Tips Menghindari Konflik
+
+| Tips | Penjelasan |
+|------|------------|
+| **Bagi file per orang** | Usahakan tiap orang punya file yang dikerjakan sendiri (misal: orang1 → `enemy.h`, orang2 → `item.h`) |
+| **Commit sering & kecil** | Jangan numpuk perubahan besar, commit tiap fitur kecil selesai |
+| **Pull sebelum mulai** | Selalu `git pull origin dev` sebelum mulai coding baru |
+| **Pesan commit jelas** | Gunakan format: `feat:`, `fix:`, `docs:`, `refactor:` di depan pesan |
+| **Komunikasi tim** | Kalau mau edit file yang sama, kabari anggota lain dulu |
+
+---
+
+### 📝 Contoh Pesan Commit yang Baik
+
+```bash
+git commit -m "feat: tambah AI state ATTACK untuk Demon enemy"
+git commit -m "fix: perbaiki crash saat ammo habis dan tembak"
+git commit -m "docs: update README tambah kontrol keyboard"
+git commit -m "refactor: pisah renderItem jadi fungsi terpisah"
+```
