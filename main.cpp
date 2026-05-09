@@ -26,7 +26,7 @@
 #include "map.h"
 #include "texture.h"
 #include "player.h"
-#include "raycaster.h"`
+#include "raycaster.h"
 #include "weapon.h"
 #include "enemy.h"
 #include "item.h"
@@ -93,6 +93,7 @@ static void keyDown(unsigned char key, int x, int y) {
         case 'd': case 'D': player.strafeRight  = 1; break;
         case '1': weaponSwitch(WEAPON_PISTOL);  break;
         case '2': weaponSwitch(WEAPON_SHOTGUN); break;
+        case '3': weaponSwitch(WEAPON_M416);    break;
         case ' ': weaponShoot(&player); break;
         /* R = Reload */
         case 'r': case 'R': weaponReload(); break;

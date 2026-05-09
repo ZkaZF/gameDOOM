@@ -2,7 +2,11 @@
 #define MAP_DATA_H
 
 /*
- * map.h — Level Data (Dungeon Cross layout, 40x32)
+ * map.h — Level Data (Dungeon Cross layout)
+ *
+ * MAP_SCALE = 3 : dunia diperbesar 3x tanpa menulis ulang array.
+ * Logical grid tetap 40x32, tapi dunia berjalan di 120x96.
+ * getMap() dan isWalkable() membagi koordinat dengan MAP_SCALE.
  *
  *   0 = walkable
  *   1 = outer wall
@@ -12,7 +16,7 @@
  *   5 = hub/center (wood brown)
  *   6 = left room (dark metal) — spawn pemain
  *
- * Layout:
+ * Layout (logical 40x32, world 120x96):
  *         [Top  8x8]   col 12-19, row 1-8
  *               |
  * [Left 8x8]--[Hub 8x8]--[Right 16x16]
@@ -20,21 +24,21 @@
  *  row 12-19   row 12-19
  *               |
  *         [Bot  8x8]   col 12-19, row 23-30
- *
- * Semua lorong lebar 2 sel, tepat di tengah sisi:
- *   Vertikal  : col 15-16
- *   Horizontal: row 15-16
  */
 
-#define MAP_W 40
-#define MAP_H 32
+/* Scale factor: setiap 1 sel logical = MAP_SCALE unit dunia */
+#define MAP_SCALE     3
+#define MAP_LOGICAL_W 40
+#define MAP_LOGICAL_H 32
+#define MAP_W (MAP_LOGICAL_W * MAP_SCALE)   /* 120 */
+#define MAP_H (MAP_LOGICAL_H * MAP_SCALE)   /* 96  */
 
-/* Player start — tengah left room, hadap timur */
-#define PLAYER_START_X   4.5f
-#define PLAYER_START_Y  15.5f
+/* Player start — tengah left room × MAP_SCALE, hadap timur */
+#define PLAYER_START_X  13.5f   /* 4.5f × 3 */
+#define PLAYER_START_Y  46.5f   /* 15.5f × 3 */
 #define PLAYER_START_ANGLE 0.0f
 
-static int worldMap[MAP_H][MAP_W] = {
+static int worldMap[MAP_LOGICAL_H][MAP_LOGICAL_W] = {
 /*       0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 */
 /* 0 */ {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
 /* 1 */ {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
@@ -71,13 +75,18 @@ static int worldMap[MAP_H][MAP_W] = {
 };
 
 static int getMap(int x, int y) {
-    if (x < 0 || x >= MAP_W || y < 0 || y >= MAP_H) return 1;
-    return worldMap[y][x];
+    /* Divide world coords by MAP_SCALE to index logical grid */
+    int lx = x / MAP_SCALE;
+    int ly = y / MAP_SCALE;
+    if (lx < 0 || lx >= MAP_LOGICAL_W || ly < 0 || ly >= MAP_LOGICAL_H) return 1;
+    return worldMap[ly][lx];
 }
 
 static int isWalkable(float x, float y) {
-    if (x < 0 || x >= MAP_W || y < 0 || y >= MAP_H) return 0;
-    return worldMap[(int)y][(int)x] == 0;
+    int lx = (int)(x / MAP_SCALE);
+    int ly = (int)(y / MAP_SCALE);
+    if (lx < 0 || lx >= MAP_LOGICAL_W || ly < 0 || ly >= MAP_LOGICAL_H) return 0;
+    return worldMap[ly][lx] == 0;
 }
 
 #endif /* MAP_DATA_H */

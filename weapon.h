@@ -26,7 +26,8 @@
 /* ───────────────────── Constants ───────────────────── */
 #define WEAPON_PISTOL   0
 #define WEAPON_SHOTGUN  1
-#define NUM_WEAPONS     2
+#define WEAPON_M416     2
+#define NUM_WEAPONS     3
 
 #define MAX_PROJECTILES 64
 #define PROJ_SPEED      0.22f
@@ -67,7 +68,7 @@ static Weapon      gWeapons[NUM_WEAPONS];
 static int         gCurrentWeapon = WEAPON_PISTOL;
 static Projectile  gProjectiles[MAX_PROJECTILES];
 static GLUquadric* gQuad = NULL;
-static float       gMuzzleFlash = 0.0f; /* 0.0 = off, >0 = flash intensity timer */
+static float       gMuzzleFlash = 0.0f;
 
 /* ───────────────────── Init ───────────────────── */
 static void weaponInit(void) {
@@ -110,6 +111,25 @@ static void weaponInit(void) {
     gWeapons[WEAPON_SHOTGUN].reloadTimer    = 0.0f;
     gWeapons[WEAPON_SHOTGUN].reloadDuration = 2.2f;
     gWeapons[WEAPON_SHOTGUN].reloadY        = 0.0f;
+
+    /* ── M416 (Full-Auto Assault Rifle) ── */
+    gWeapons[WEAPON_M416].type           = WEAPON_M416;
+    strcpy(gWeapons[WEAPON_M416].name, "M416");
+    gWeapons[WEAPON_M416].ammo           = 30;
+    gWeapons[WEAPON_M416].maxAmmo        = 30;
+    gWeapons[WEAPON_M416].cooldown       = 0.092f;   /* ~650 RPM */
+    gWeapons[WEAPON_M416].timer          = 9999.0f;
+    gWeapons[WEAPON_M416].recoilY        = 0.0f;
+    gWeapons[WEAPON_M416].spreadAngle    = 0.025f;   /* slight spread */
+    gWeapons[WEAPON_M416].pelletsPerShot = 1;
+    gWeapons[WEAPON_M416].damage         = 15;
+    gWeapons[WEAPON_M416].projR          = 0.55f;    /* green-ish tracer */
+    gWeapons[WEAPON_M416].projG          = 0.95f;
+    gWeapons[WEAPON_M416].projB          = 0.30f;
+    gWeapons[WEAPON_M416].isReloading    = 0;
+    gWeapons[WEAPON_M416].reloadTimer    = 0.0f;
+    gWeapons[WEAPON_M416].reloadDuration = 2.4f;
+    gWeapons[WEAPON_M416].reloadY        = 0.0f;
 
     /* GLU quadric for cylinder barrels */
     gQuad = gluNewQuadric();
@@ -155,7 +175,8 @@ static void weaponShoot(Player* player) {
 
     w->ammo--;
     w->timer   = 0.0f;
-    w->recoilY = (gCurrentWeapon == WEAPON_SHOTGUN) ? 0.20f : 0.10f;
+    w->recoilY = (gCurrentWeapon == WEAPON_SHOTGUN) ? 0.20f :
+                 (gCurrentWeapon == WEAPON_M416)    ? 0.04f : 0.10f;
     gMuzzleFlash = 0.10f;
 
     for (i = 0; i < w->pelletsPerShot; i++) {
@@ -382,6 +403,98 @@ static void renderShotgunModel(void) {
     glPopMatrix();
 }
 
+/* ────────────────────────────── 3D Weapon Model: M416 ────────────────────────────── */
+static void renderM416Model(void) {
+    /* Receiver — main body */
+    glColor3f(0.20f, 0.22f, 0.20f);
+    glPushMatrix();
+        glTranslatef(0.0f, 0.0f, 0.0f);
+        glScalef(0.10f, 0.09f, 0.48f);
+        glutSolidCube(1.0f);
+    glPopMatrix();
+
+    /* Barrel — long and thin */
+    glColor3f(0.15f, 0.16f, 0.15f);
+    glPushMatrix();
+        glTranslatef(0.0f, 0.012f, -0.38f);
+        glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
+        gluCylinder(gQuad, 0.018f, 0.016f, 0.32f, 10, 1);
+    glPopMatrix();
+
+    /* Gas tube (above barrel) */
+    glColor3f(0.18f, 0.19f, 0.17f);
+    glPushMatrix();
+        glTranslatef(0.0f, 0.038f, -0.30f);
+        glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
+        gluCylinder(gQuad, 0.009f, 0.009f, 0.26f, 8, 1);
+    glPopMatrix();
+
+    /* Handguard (around barrel, slightly wider) */
+    glColor3f(0.25f, 0.27f, 0.24f);
+    glPushMatrix();
+        glTranslatef(0.0f, 0.006f, -0.22f);
+        glScalef(0.13f, 0.10f, 0.25f);
+        glutSolidCube(1.0f);
+    glPopMatrix();
+
+    /* Magazine (dark, angled slightly forward) */
+    glColor3f(0.14f, 0.15f, 0.13f);
+    glPushMatrix();
+        glTranslatef(0.0f, -0.13f, 0.04f);
+        glRotatef(7.0f, 1.0f, 0.0f, 0.0f);
+        glScalef(0.07f, 0.20f, 0.10f);
+        glutSolidCube(1.0f);
+    glPopMatrix();
+
+    /* Pistol grip */
+    glColor3f(0.18f, 0.14f, 0.10f);
+    glPushMatrix();
+        glTranslatef(0.0f, -0.10f, 0.15f);
+        glRotatef(18.0f, 1.0f, 0.0f, 0.0f);
+        glScalef(0.07f, 0.15f, 0.09f);
+        glutSolidCube(1.0f);
+    glPopMatrix();
+
+    /* Stock — collapsible style */
+    glColor3f(0.20f, 0.22f, 0.20f);
+    glPushMatrix();
+        glTranslatef(0.0f, 0.0f, 0.30f);
+        glScalef(0.08f, 0.06f, 0.20f);
+        glutSolidCube(1.0f);
+    glPopMatrix();
+    /* Stock butt plate */
+    glColor3f(0.12f, 0.12f, 0.12f);
+    glPushMatrix();
+        glTranslatef(0.0f, -0.018f, 0.41f);
+        glScalef(0.09f, 0.09f, 0.04f);
+        glutSolidCube(1.0f);
+    glPopMatrix();
+
+    /* Carry handle / sight rail */
+    glColor3f(0.22f, 0.24f, 0.22f);
+    glPushMatrix();
+        glTranslatef(0.0f, 0.058f, 0.05f);
+        glScalef(0.06f, 0.04f, 0.30f);
+        glutSolidCube(1.0f);
+    glPopMatrix();
+
+    /* Front sight post */
+    glColor3f(0.90f, 0.90f, 0.88f);
+    glPushMatrix();
+        glTranslatef(0.0f, 0.076f, -0.17f);
+        glScalef(0.010f, 0.022f, 0.012f);
+        glutSolidCube(1.0f);
+    glPopMatrix();
+
+    /* Charging handle (right side) */
+    glColor3f(0.15f, 0.16f, 0.15f);
+    glPushMatrix();
+        glTranslatef(0.07f, 0.008f, 0.11f);
+        glScalef(0.025f, 0.025f, 0.06f);
+        glutSolidCube(1.0f);
+    glPopMatrix();
+}
+
 /* ───────────────────── Render 3D Weapon (floating in screen space) ─── */
 static void renderWeapon3D(Player* player) {
     Weapon* w    = &gWeapons[gCurrentWeapon];
@@ -454,15 +567,19 @@ static void renderWeapon3D(Player* player) {
     /* ── Render weapon model ── */
     if (gCurrentWeapon == WEAPON_PISTOL)
         renderPistolModel();
-    else
+    else if (gCurrentWeapon == WEAPON_SHOTGUN)
         renderShotgunModel();
+    else
+        renderM416Model();
 
     /* ── Muzzle flash sphere ── */
     if (gMuzzleFlash > 0.0f) {
         float alpha  = gMuzzleFlash / 0.10f;
-        float fzOff  = (gCurrentWeapon == WEAPON_PISTOL) ? -0.42f : -0.75f;
-        float fxOff  = (gCurrentWeapon == WEAPON_PISTOL) ?  0.0f  :  0.0f;
-        float fScale = (gCurrentWeapon == WEAPON_PISTOL) ?  0.05f :  0.075f;
+        float fzOff  = (gCurrentWeapon == WEAPON_PISTOL)  ? -0.42f :
+                       (gCurrentWeapon == WEAPON_SHOTGUN) ? -0.75f : -0.65f;
+        float fxOff  = 0.0f;
+        float fScale = (gCurrentWeapon == WEAPON_PISTOL)  ?  0.05f :
+                       (gCurrentWeapon == WEAPON_SHOTGUN) ?  0.075f : 0.06f;
 
         glDisable(GL_LIGHTING);
         glEnable(GL_BLEND);
@@ -522,6 +639,9 @@ static void renderProjectiles(Player* player) {
         float relX, relY, tX, tY;
 
         if (!p->active) continue;
+
+        relX = p->x - player->x;
+        relY = p->y - player->y;
 
         /* Correct sprite camera transform (Lode's formula):
          *   transformX (horizontal) = (dirX*relY - dirY*relX) / det

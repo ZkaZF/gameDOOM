@@ -42,7 +42,7 @@
 #define STATE_DEAD    4
 
 #define MAX_ENEMIES    20
-#define DETECT_RANGE   8.0f
+#define DETECT_RANGE   24.0f   /* 8.0f × MAP_SCALE(3) */
 #define DEATH_DURATION 1.3f
 
 /* ───────────────────── Struct ───────────────────── */
@@ -85,23 +85,23 @@ static void enemySpawn(int type, float x, float y) {
     switch (type) {
         case ENEMY_IMP:
             e->hp          = 60.0f;  e->maxHp = 60.0f;
-            e->speed       = 0.016f;
+            e->speed       = 0.048f;  /* 0.016f × 3 */
             e->damage      = 10.0f;
-            e->atkRange    = 0.80f;
+            e->atkRange    = 2.40f;   /* 0.80f × 3 */
             e->atkCooldown = 1.0f;
             break;
         case ENEMY_DEMON:
             e->hp          = 180.0f; e->maxHp = 180.0f;
-            e->speed       = 0.009f;
+            e->speed       = 0.027f;  /* 0.009f × 3 */
             e->damage      = 35.0f;
-            e->atkRange    = 0.90f;
+            e->atkRange    = 2.70f;   /* 0.90f × 3 */
             e->atkCooldown = 1.8f;
             break;
         case ENEMY_SPECTRE:
             e->hp          = 35.0f;  e->maxHp = 35.0f;
-            e->speed       = 0.026f;
+            e->speed       = 0.078f;  /* 0.026f × 3 */
             e->damage      = 8.0f;
-            e->atkRange    = 0.75f;
+            e->atkRange    = 2.25f;   /* 0.75f × 3 */
             e->atkCooldown = 0.65f;
             break;
     }
@@ -114,21 +114,21 @@ static void enemyInitLevel(void) {
     gKillCount  = 0;
     gDamageFlash = 0.0f;
 
-    /* 5 Imps — tersebar di berbagai ruangan (map 40x32) */
-    enemySpawn(ENEMY_IMP,     4.5f, 15.5f);   /* left room   — tengah */
-    enemySpawn(ENEMY_IMP,    15.5f,  4.5f);   /* top room    — tengah */
-    enemySpawn(ENEMY_IMP,    31.0f, 11.0f);   /* right room  — pojok atas */
-    enemySpawn(ENEMY_IMP,    31.0f, 20.0f);   /* right room  — pojok bawah */
-    enemySpawn(ENEMY_IMP,    15.5f, 26.5f);   /* bottom room — tengah */
+    /* 5 Imps — tersebar di berbagai ruangan (posisi × MAP_SCALE = 3) */
+    enemySpawn(ENEMY_IMP,    13.5f, 46.5f);   /* left room   — tengah */
+    enemySpawn(ENEMY_IMP,    46.5f, 13.5f);   /* top room    — tengah */
+    enemySpawn(ENEMY_IMP,    93.0f, 33.0f);   /* right room  — pojok atas */
+    enemySpawn(ENEMY_IMP,    93.0f, 60.0f);   /* right room  — pojok bawah */
+    enemySpawn(ENEMY_IMP,    46.5f, 79.5f);   /* bottom room — tengah */
 
     /* 2 Demons — menjaga hub/center */
-    enemySpawn(ENEMY_DEMON,  14.5f, 15.5f);   /* hub — sisi kiri */
-    enemySpawn(ENEMY_DEMON,  17.5f, 15.5f);   /* hub — sisi kanan */
+    enemySpawn(ENEMY_DEMON,  43.5f, 46.5f);   /* hub — sisi kiri */
+    enemySpawn(ENEMY_DEMON,  52.5f, 46.5f);   /* hub — sisi kanan */
 
     /* 3 Spectres — di koridor + right room besar */
-    enemySpawn(ENEMY_SPECTRE, 15.5f, 10.5f);  /* koridor atas */
-    enemySpawn(ENEMY_SPECTRE, 15.5f, 21.5f);  /* koridor bawah */
-    enemySpawn(ENEMY_SPECTRE, 10.5f, 15.5f);  /* koridor kiri */
+    enemySpawn(ENEMY_SPECTRE, 46.5f, 31.5f);  /* koridor atas */
+    enemySpawn(ENEMY_SPECTRE, 46.5f, 64.5f);  /* koridor bawah */
+    enemySpawn(ENEMY_SPECTRE, 31.5f, 46.5f);  /* koridor kiri */
 }
 
 /* ───────────────────── Hit ───────────────────── */
@@ -191,7 +191,7 @@ static void enemyUpdate(Player* player, float dt) {
 
             case STATE_CHASE:
                 /* Lose interest if player is far for 3s */
-                if (dist > DETECT_RANGE + 2.0f) {
+                if (dist > DETECT_RANGE + 6.0f) {  /* +2.0f × 3 */
                     e->stateTimer += dt;
                     if (e->stateTimer > 3.0f) {
                         e->state = STATE_IDLE;
@@ -212,7 +212,7 @@ static void enemyUpdate(Player* player, float dt) {
                 if (dist > 0.01f) {
                     float spd = e->speed;
                     /* Spectre: retreat when too close */
-                    if (e->type == ENEMY_SPECTRE && dist < 2.5f) {
+                    if (e->type == ENEMY_SPECTRE && dist < 7.5f) {  /* 2.5f × 3 */
                         nx = -(dx / dist) * spd * 0.6f;
                         ny = -(dy / dist) * spd * 0.6f;
                     } else {
@@ -220,9 +220,9 @@ static void enemyUpdate(Player* player, float dt) {
                         ny = (dy / dist) * spd;
                     }
                     /* Slide-style collision */
-                    if (isWalkable(e->x + nx + (nx > 0 ? 0.3f : -0.3f), e->y))
+                    if (isWalkable(e->x + nx + (nx > 0 ? 0.9f : -0.9f), e->y))
                         e->x += nx;
-                    if (isWalkable(e->x, e->y + ny + (ny > 0 ? 0.3f : -0.3f)))
+                    if (isWalkable(e->x, e->y + ny + (ny > 0 ? 0.9f : -0.9f)))
                         e->y += ny;
                 }
                 break;
@@ -231,7 +231,7 @@ static void enemyUpdate(Player* player, float dt) {
                 e->atkTimer += dt;
                 if (e->atkTimer >= e->atkCooldown) {
                     e->atkTimer = 0.0f;
-                    if (dist <= e->atkRange + 0.3f) {
+                    if (dist <= e->atkRange + 0.9f) {  /* 0.3f × 3 */
                         /* Deal damage */
                         player->health -= (int)e->damage;
                         if (player->health < 0) player->health = 0;
@@ -241,7 +241,7 @@ static void enemyUpdate(Player* player, float dt) {
                     }
                 }
                 /* Chase again if target moves away */
-                if (dist > e->atkRange + 0.6f)
+                if (dist > e->atkRange + 1.8f)  /* 0.6f × 3 */
                     e->state = STATE_CHASE;
                 break;
 
@@ -421,186 +421,122 @@ static void renderEnemies(Player* player) {
         sortDist[sj + 1] = distTmp;
     }
 
-    /* ── Single 3D perspective pass ── */
-    glClear(GL_DEPTH_BUFFER_BIT);
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_LIGHTING);
-    glEnable(GL_LIGHT0);
-    glEnable(GL_COLOR_MATERIAL);
-    glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
-
-    {
-        GLfloat lPos[]  = { 0.0f, 1.0f, 0.0f, 0.0f };
-        GLfloat lAmb[]  = { 0.38f, 0.33f, 0.28f, 1.0f };
-        GLfloat lDiff[] = { 0.82f, 0.78f, 0.68f, 1.0f };
-        glLightfv(GL_LIGHT0, GL_POSITION, lPos);
-        glLightfv(GL_LIGHT0, GL_AMBIENT,  lAmb);
-        glLightfv(GL_LIGHT0, GL_DIFFUSE,  lDiff);
-    }
-
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glLoadIdentity();
-    /*
-     * Match raycaster pitch using a frustum shift — NOT a camera tilt.
-     * Tilting gluLookAt would rotate the world and make enemies float up/down.
-     * Shifting the frustum vertically moves the "centre of the screen" exactly
-     * the same way the raycaster's pitchOff pixel-shifts wall strips.
-     *
-     * tan(vFovHalf) = planeLen / aspect   (same derivation as gluPerspective match)
-     * The half-height of the near plane  = near * tan(vFovHalf)
-     * Pitch shift in near-plane units    = (pitch / halfScreenH) * halfNear
-     *   (positive pitch => horizon down => frustum centre shifts down => enemies appear UP)
-     */
-    {
-        double near_d       = 0.05;
-        double far_d        = 30.0;
-        double planeLen     = 0.66;
-        double hFovTan      = planeLen;                      /* tan(hFovHalf) */
-        double vFovTan      = planeLen / (double)aspect;     /* tan(vFovHalf) */
-        double half_w       = near_d * hFovTan;
-        double half_h       = near_d * vFovTan;
-        double pitch_shift  = (player->pitch / (SCREEN_H * 0.5)) * half_h;
-
-        glFrustum(-half_w, half_w,
-                  -half_h + pitch_shift,
-                   half_h + pitch_shift,
-                   near_d, far_d);
-    }
-
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadIdentity();
-
-    /* Camera looks straight ahead — NO pitch tilt here.
-     * Vertical aim is handled entirely by the frustum shift above. */
-    gluLookAt(
-        (double)player->x, 0.5, (double)player->y,
-        (double)(player->x + player->dirX), 0.5, (double)(player->y + player->dirY),
-        0.0, 1.0, 0.0
-    );
-
-    /* Render sorted enemies */
+    /* ── 2D Billboard sprites — pure ortho, synced with WALL_HEIGHT_SCALE ── */
     {
         int k;
+        int pitchInt = (int)player->pitch;
+        int horizY   = SCREEN_H / 2 + pitchInt;
+
         for (k = 0; k < n; k++) {
             Enemy* e = &gEnemies[sortIdx[k]];
-            float  dx, dy, tX, tY;
-            int    scrX;
-            float  deathAnim, scale;
+            float dx, dy, tX, tY;
+            int   screenX, behindWall, col;
+            float fullH, floorY, sScale, shade;
+            int   spriteH, spriteW, sX0, sX1, sY0, sY1;
+            float fx0, fx1, fy0, fy1, midX, w, h;
 
             dx = e->x - player->x;
             dy = e->y - player->y;
 
-            /*
-             * Correct sprite camera transform (Lode's formula):
-             *   transformX = horizontal screen position  = (dirX*dy - dirY*dx) / det
-             *   transformY = depth in front of camera    = (planeY*dx - planeX*dy) / det
-             * Previous code had tX/tY swapped — causing enemies to appear at wrong
-             * screen positions and pop through walls.
-             */
-            {
-                float transformX = (player->dirX * dy - player->dirY * dx) / det;
-                float transformY = (player->planeY * dx - player->planeX * dy) / det;
+            tX = (player->dirX * dy  - player->dirY * dx)  / det;
+            tY = (player->planeY * dx - player->planeX * dy) / det;
+            if (tY <= 0.1f) continue;
 
-                if (transformY <= 0.1f) continue;  /* behind camera */
+            screenX = (int)((float)(SCREEN_W / 2) * (1.0f + tX / tY));
 
-                scrX = (int)((float)(SCREEN_W / 2) * (1.0f + transformX / transformY));
-                if (scrX < 1 || scrX >= SCREEN_W - 1) continue;
-
-                /* Wall occlusion: sample columns across the enemy's projected width.
-                 * halfW is proportional to projected screen size so large/close enemies
-                 * don't incorrectly pop-in/out when their centre pixel is behind a wall. */
-                {
-                    int col, behindWall = 1;
-                    int projH = abs((int)(SCREEN_H / transformY));
-                    int halfW = projH / 3;     /* ~1/3 of projected height as half-width */
-                    if (halfW < 4)  halfW = 4;  /* minimum 4-column scan */
-                    if (halfW > 80) halfW = 80; /* cap to avoid huge loops */
-                    {
-                        int step = (halfW <= 8) ? 1 : halfW / 5;
-                        for (col = -halfW; col <= halfW; col += step) {
-                            int c = scrX + col;
-                            if (c >= 0 && c < SCREEN_W && zBuffer[c] >= transformY * 0.90f) {
-                                behindWall = 0;
-                                break;
-                            }
-                        }
-                    }
-                    if (behindWall) continue;
-                }
-
-                /* Store corrected depth for health bar check below */
-                tX = transformX;
-                tY = transformY;
-            }
-
-            /* Death animation */
-            deathAnim = 0.0f;
+            /* Sprite scale by type, shrink on death */
+            sScale = (e->type == ENEMY_DEMON) ? 0.90f :
+                     (e->type == ENEMY_SPECTRE) ? 0.70f : 0.80f;
             if (e->state == STATE_DYING) {
-                deathAnim = e->deathTimer / DEATH_DURATION;
-                if (deathAnim > 1.0f) deathAnim = 1.0f;
+                float t = e->deathTimer / DEATH_DURATION;
+                if (t > 1.0f) t = 1.0f;
+                sScale *= (1.0f - t * 0.85f);
             }
 
-            scale = (e->type == ENEMY_DEMON)   ? 0.95f :
-                    (e->type == ENEMY_SPECTRE)  ? 0.65f : 0.76f;
+            /* Sprite dimensions — sits on floor */
+            fullH   = (float)SCREEN_H * WALL_HEIGHT_SCALE / tY;
+            floorY  = (float)horizY + fullH * 0.5f;
+            spriteH = (int)(fullH * sScale);
+            if (spriteH < 2) spriteH = 2;
+            spriteW = spriteH;
+            sY1 = (int)floorY;
+            sY0 = sY1 - spriteH;
+            sX0 = screenX - spriteW / 2;
+            sX1 = screenX + spriteW / 2;
+            if (sX1 < 0 || sX0 >= SCREEN_W || sY1 < 0 || sY0 >= SCREEN_H) continue;
 
-            glPushMatrix();
-            glTranslatef(e->x, 0.0f, e->y);
-            glScalef(scale, scale, scale);
+            /* Wall occlusion */
+            behindWall = 1;
+            { int step = (spriteW > 16) ? spriteW / 6 : 1;
+              for (col = sX0; col <= sX1; col += step)
+                  if (col >= 0 && col < SCREEN_W && zBuffer[col] >= tY * 0.90f)
+                      { behindWall = 0; break; } }
+            if (behindWall) continue;
 
-            /* Rotate to face player (Y-axis billboard) */
-            glRotatef(
-                (float)(atan2f(dx, dy) * 180.0f / (float)M_PI),
-                0.0f, 1.0f, 0.0f
-            );
+            shade = 1.0f - tY / 48.0f;
+            if (shade < 0.15f) shade = 0.15f;
 
-            /* Render model */
-            switch (e->type) {
-                case ENEMY_IMP:     renderImpModel(deathAnim);     break;
-                case ENEMY_DEMON:   renderDemonModel(deathAnim);   break;
-                case ENEMY_SPECTRE: renderSpectreModel(deathAnim); break;
+            /* Clamp draw rect */
+            fx0  = (float)(sX0 < 0 ? 0 : sX0);
+            fx1  = (float)(sX1 >= SCREEN_W ? SCREEN_W-1 : sX1);
+            fy0  = (float)(sY0 < 0 ? 0 : sY0);
+            fy1  = (float)(sY1 >= SCREEN_H ? SCREEN_H-1 : sY1);
+            midX = (fx0 + fx1) * 0.5f;
+            w    = fx1 - fx0;
+            h    = fy1 - fy0;
+            if (w < 1 || h < 1) continue;
+
+            if (e->type == ENEMY_IMP) {
+                /* Body: red-brown */
+                glColor3f(0.45f*shade, 0.12f*shade, 0.08f*shade);
+                glBegin(GL_QUADS); glVertex2f(fx0,fy0+h*0.28f); glVertex2f(fx1,fy0+h*0.28f); glVertex2f(fx1,fy1); glVertex2f(fx0,fy1); glEnd();
+                /* Head: orange */
+                glColor3f(0.72f*shade, 0.35f*shade, 0.10f*shade);
+                glBegin(GL_QUADS); glVertex2f(midX-w*0.26f,fy0); glVertex2f(midX+w*0.26f,fy0); glVertex2f(midX+w*0.26f,fy0+h*0.28f); glVertex2f(midX-w*0.26f,fy0+h*0.28f); glEnd();
+                /* Eyes: yellow */
+                glColor3f(0.95f*shade, 0.85f*shade, 0.0f);
+                glBegin(GL_QUADS); glVertex2f(midX-w*0.20f,fy0+h*0.07f); glVertex2f(midX-w*0.06f,fy0+h*0.07f); glVertex2f(midX-w*0.06f,fy0+h*0.18f); glVertex2f(midX-w*0.20f,fy0+h*0.18f); glEnd();
+                glBegin(GL_QUADS); glVertex2f(midX+w*0.06f,fy0+h*0.07f); glVertex2f(midX+w*0.20f,fy0+h*0.07f); glVertex2f(midX+w*0.20f,fy0+h*0.18f); glVertex2f(midX+w*0.06f,fy0+h*0.18f); glEnd();
+            } else if (e->type == ENEMY_DEMON) {
+                /* Body: dark purple */
+                glColor3f(0.35f*shade, 0.08f*shade, 0.30f*shade);
+                glBegin(GL_QUADS); glVertex2f(fx0,fy0); glVertex2f(fx1,fy0); glVertex2f(fx1,fy1); glVertex2f(fx0,fy1); glEnd();
+                /* Face: pink */
+                glColor3f(0.70f*shade, 0.25f*shade, 0.30f*shade);
+                glBegin(GL_QUADS); glVertex2f(midX-w*0.28f,fy0+h*0.08f); glVertex2f(midX+w*0.28f,fy0+h*0.08f); glVertex2f(midX+w*0.28f,fy0+h*0.42f); glVertex2f(midX-w*0.28f,fy0+h*0.42f); glEnd();
+                /* Red eyes */
+                glColor3f(0.95f*shade, 0.05f*shade, 0.05f*shade);
+                glBegin(GL_QUADS); glVertex2f(midX-w*0.22f,fy0+h*0.12f); glVertex2f(midX-w*0.08f,fy0+h*0.12f); glVertex2f(midX-w*0.08f,fy0+h*0.24f); glVertex2f(midX-w*0.22f,fy0+h*0.24f); glEnd();
+                glBegin(GL_QUADS); glVertex2f(midX+w*0.08f,fy0+h*0.12f); glVertex2f(midX+w*0.22f,fy0+h*0.12f); glVertex2f(midX+w*0.22f,fy0+h*0.24f); glVertex2f(midX+w*0.08f,fy0+h*0.24f); glEnd();
+            } else { /* SPECTRE */
+                /* Ghost body: blue-gray */
+                glColor3f(0.50f*shade, 0.55f*shade, 0.62f*shade);
+                glBegin(GL_QUADS); glVertex2f(fx0,fy0); glVertex2f(fx1,fy0); glVertex2f(fx1,fy1); glVertex2f(fx0,fy1); glEnd();
+                /* Inner dark */
+                glColor3f(0.25f*shade, 0.27f*shade, 0.35f*shade);
+                glBegin(GL_QUADS); glVertex2f(fx0+w*0.12f,fy0+h*0.12f); glVertex2f(fx1-w*0.12f,fy0+h*0.12f); glVertex2f(fx1-w*0.12f,fy1-h*0.12f); glVertex2f(fx0+w*0.12f,fy1-h*0.12f); glEnd();
+                /* Cyan eye */
+                glColor3f(0.20f*shade, 0.85f*shade, 0.90f*shade);
+                glBegin(GL_QUADS); glVertex2f(midX-w*0.10f,(fy0+fy1)*0.5f-h*0.12f); glVertex2f(midX+w*0.10f,(fy0+fy1)*0.5f-h*0.12f); glVertex2f(midX+w*0.10f,(fy0+fy1)*0.5f+h*0.05f); glVertex2f(midX-w*0.10f,(fy0+fy1)*0.5f+h*0.05f); glEnd();
             }
 
-            /* Health bar (3D billboard quad — only if alive and close) */
-            /* tY = corrected depth (set in transform block above) */
-            if (e->state != STATE_DYING && e->state != STATE_DEAD && tY < 7.0f) {
-                float hr = e->hp / e->maxHp;
-                glDisable(GL_LIGHTING);
-
-                /* Background */
-                glColor3f(0.18f, 0.0f, 0.0f);
-                glBegin(GL_QUADS);
-                    glVertex3f(-0.36f, 1.05f, 0.0f);
-                    glVertex3f( 0.36f, 1.05f, 0.0f);
-                    glVertex3f( 0.36f, 1.14f, 0.0f);
-                    glVertex3f(-0.36f, 1.14f, 0.0f);
-                glEnd();
-
-                /* Fill */
-                if (hr > 0.5f)       glColor3f(0.12f, 0.82f, 0.22f);
-                else if (hr > 0.25f) glColor3f(0.90f, 0.70f, 0.10f);
-                else                 glColor3f(0.92f, 0.10f, 0.08f);
-                glBegin(GL_QUADS);
-                    glVertex3f(-0.36f, 1.05f, 0.0f);
-                    glVertex3f(-0.36f + 0.72f * hr, 1.05f, 0.0f);
-                    glVertex3f(-0.36f + 0.72f * hr, 1.14f, 0.0f);
-                    glVertex3f(-0.36f, 1.14f, 0.0f);
-                glEnd();
-                glEnable(GL_LIGHTING);
+            /* Health bar (2D, above sprite) */
+            if (e->state != STATE_DYING && e->state != STATE_DEAD && tY < 21.0f) {
+                float hr  = e->hp / e->maxHp;
+                float barY = fy0 - (h > 40 ? h*0.08f : 4.0f);
+                float barH = (h > 40 ? h*0.05f : 3.0f);
+                glColor3f(0.15f,0.0f,0.0f);
+                glBegin(GL_QUADS); glVertex2f(fx0,barY); glVertex2f(fx1,barY); glVertex2f(fx1,barY+barH); glVertex2f(fx0,barY+barH); glEnd();
+                if (hr > 0.5f) glColor3f(0.10f,0.80f,0.20f);
+                else if (hr > 0.25f) glColor3f(0.90f,0.70f,0.10f);
+                else glColor3f(0.90f,0.10f,0.08f);
+                glBegin(GL_QUADS); glVertex2f(fx0,barY); glVertex2f(fx0+w*hr,barY); glVertex2f(fx0+w*hr,barY+barH); glVertex2f(fx0,barY+barH); glEnd();
             }
-
-            glPopMatrix();
         }
     }
 
-    /* Restore */
-    glMatrixMode(GL_PROJECTION); glPopMatrix();
-    glMatrixMode(GL_MODELVIEW);  glPopMatrix();
 
-    glDisable(GL_LIGHTING);
-    glDisable(GL_COLOR_MATERIAL);
-    glDisable(GL_DEPTH_TEST);
+
 }
 
 static int enemyGetKillCount(void) { return gKillCount; }

@@ -8,7 +8,7 @@
 #endif
 
 /* ───────────────────── Player Constants ───────────────────── */
-#define MOVE_SPEED    0.05f
+#define MOVE_SPEED    0.15f   /* 0.05f × MAP_SCALE(3) */
 #define ROT_SPEED     0.03f
 #define MOUSE_SENS    0.003f
 #define MOUSE_SENS_Y  0.30f  /* vertical look sensitivity (pixels per mouse unit) */
@@ -44,10 +44,10 @@ static void playerInit(Player* p) {
     p->dirX = cosf(p->angle);
     p->dirY = sinf(p->angle);
 
-    /* Camera plane perpendicular to direction, FOV ~66 degrees */
-    /* plane length = tan(FOV/2) = tan(33deg) ≈ 0.66 */
-    p->planeX = -p->dirY * 0.66f;
-    p->planeY =  p->dirX * 0.66f;
+    /* Camera plane — FOV ~84 degrees for a wide, open feel */
+    /* plane length = tan(42deg) ≈ 0.90 */
+    p->planeX = -p->dirY * 0.90f;
+    p->planeY =  p->dirX * 0.90f;
 
     p->pitch = 0.0f;
     p->health = 100;
@@ -64,8 +64,8 @@ static void playerInit(Player* p) {
 static void playerUpdateDirection(Player* p) {
     p->dirX = cosf(p->angle);
     p->dirY = sinf(p->angle);
-    p->planeX = -p->dirY * 0.66f;
-    p->planeY =  p->dirX * 0.66f;
+    p->planeX = -p->dirY * 0.90f;
+    p->planeY =  p->dirX * 0.90f;
 }
 
 /* Rotate player by delta angle (from mouse movement) */

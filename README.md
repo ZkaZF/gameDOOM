@@ -23,6 +23,13 @@ Engine raycasting menggunakan algoritma **DDA (Digital Differential Analyzer)** 
 - ✅ Item pickup (Health, Ammo, Armor) dengan animasi float & rotate
 - ✅ HUD lengkap: crosshair, health bar, minimap, kill counter, wave indicator
 
+### ⚡ Optimasi Performa (Anti-Lag)
+Game ini mengimplementasikan teknik rendering yang sangat dioptimasi agar tetap berjalan lancar (30-60 FPS) meskipun peta dunia berukuran besar:
+1. **Batching Draw Calls (`GL_POINTS` & `GL_LINES`)**: Mengurangi drastis panggilan `glBegin`/`glEnd` ke OpenGL dengan menggabungkan ribuan perhitungan piksel lantai dan kolom tembok ke dalam satu instruksi besar.
+2. **Adaptive Raycasting Step**: Algoritma lantai pintar (*floor raycasting*) yang mengurangi beban hitungan tekstur berdasar jarak. Sistem memproses setiap 1 piksel untuk jarak dekat, setiap 2 piksel untuk jarak menengah, dan setiap 4 piksel untuk jarak jauh.
+3. **Occlusion & Fog Culling**: Sistem langsung melewati perhitungan untuk area lantai yang tertutup kabut tebal total (*fog*), menggantinya dengan blok warna solid secara instan.
+4. **Compiler Optimization (`-O2`)**: Memanfaatkan pengaturan *compiler* C++ tingkat lanjut (Level 2) untuk merampingkan perhitungan matematika mentah dan menghemat siklus prosesor saat dieksekusi.
+
 ---
 
 ## 🗺️ Layout Peta
@@ -59,17 +66,16 @@ Peta berukuran **40×32** grid dengan beberapa zona berbeda: ruangan dalam bangu
 2. **File → Open Project** → pilih file `tubesGame.dev`
 3. Tekan **F9** untuk Compile & Run langsung
 
-### ⚡ Menggunakan Makefile
+### ⚡ Menggunakan Terminal (PowerShell / VS Code)
+
+> Sangat direkomendasikan jika sering mengedit file kode tanpa membuka Dev-C++ terus menerus.
 
 ```powershell
-# Build
-make -f Makefile.win
+# Force recompile (Hapus cache object & Build ulang)
+Remove-Item -Force main.o -ErrorAction SilentlyContinue; mingw32-make -f Makefile.win
 
-# Jalankan
+# Jalankan game
 .\tubesGame.exe
-
-# Bersihkan file build
-make -f Makefile.win clean
 ```
 
 ### 🔧 Menggunakan Command Line (MinGW32)

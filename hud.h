@@ -245,7 +245,7 @@ static void drawWeaponSelector(void) {
     float iW = 62.0f, iH = 24.0f;
     float sX = SCREEN_W / 2.0f - iW - 4.0f;
     float iY = SCREEN_H - iH - 6.0f;
-    const char* names[NUM_WEAPONS] = {"1:PISTOL", "2:SHOTGUN"};
+    const char* names[NUM_WEAPONS] = {"1:PISTOL", "2:SHOTGUN", "3:M416"};
     int i;
 
     for (i = 0; i < NUM_WEAPONS; i++) {
@@ -307,17 +307,20 @@ static void drawMinimap(Player* player) {
     float mSz = 140.0f;
     float mx  = SCREEN_W - mSz - 14.0f;
     float my  = 14.0f;
-    float cw  = mSz / MAP_W;
-    float ch  = mSz / MAP_H;
+    /* Use logical grid dims for cell sizing — world is MAP_SCALE × bigger */
+    float cw  = mSz / MAP_LOGICAL_W;
+    float ch  = mSz / MAP_LOGICAL_H;
+    /* Convert world position to minimap position via MAP_SCALE */
+    float invScale = 1.0f / MAP_SCALE;
     int   x, y, i;
     float px, py;
 
     glColor4f(0.0f, 0.0f, 0.0f, 0.55f);
     fillRect(mx - 2, my - 2, mSz + 4, mSz + 4);
 
-    /* Walls */
-    for (y = 0; y < MAP_H; y++) {
-        for (x = 0; x < MAP_W; x++) {
+    /* Walls — iterate logical grid */
+    for (y = 0; y < MAP_LOGICAL_H; y++) {
+        for (x = 0; x < MAP_LOGICAL_W; x++) {
             int wt = worldMap[y][x];
             if (wt > 0) {
                 if (wt >= numWallColors) wt = 1;
@@ -329,7 +332,7 @@ static void drawMinimap(Player* player) {
         }
     }
 
-    /* Enemies on minimap */
+    /* Enemies on minimap — convert world pos ÷ MAP_SCALE */
     for (i = 0; i < gNumEnemies; i++) {
         Enemy* e = &gEnemies[i];
         if (!e->active) continue;
@@ -340,13 +343,13 @@ static void drawMinimap(Player* player) {
         }
         glPointSize(4.0f);
         glBegin(GL_POINTS);
-            glVertex2f(mx + e->x * cw, my + e->y * ch);
+            glVertex2f(mx + e->x * invScale * cw, my + e->y * invScale * ch);
         glEnd();
     }
 
-    /* Player */
-    px = mx + player->x * cw;
-    py = my + player->y * ch;
+    /* Player — convert world pos ÷ MAP_SCALE */
+    px = mx + player->x * invScale * cw;
+    py = my + player->y * invScale * ch;
     glColor3f(0.10f, 0.95f, 0.30f);
     glLineWidth(1.5f);
     glBegin(GL_LINES);

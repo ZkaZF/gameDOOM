@@ -36,7 +36,7 @@
 #define NUM_ITEM_TYPES 3
 
 #define MAX_ITEMS      32
-#define ITEM_RADIUS    0.55f   /* auto-pickup distance */
+#define ITEM_RADIUS    1.65f   /* auto-pickup distance — 0.55f × MAP_SCALE(3) */
 #define ITEM_BOB_SPEED 2.4f    /* bobbing speed (rad/s) */
 #define ITEM_ROT_SPEED 90.0f   /* rotation speed (deg/s) */
 #define ITEM_LIFETIME  25.0f   /* seconds before item despawns */
@@ -119,10 +119,10 @@ static void itemCheckWave(float dt) {
         enemyInitLevel();
         /* Bonus score for completing wave */
         gPlayerScore += gWave * 100;
-        /* Add some free health packs at start of new wave */
+        /* Add some free health packs at start of new wave (positions × MAP_SCALE) */
         for (i = 0; i < 2; i++) {
-            float px = 6.0f + (float)(rand() % 12);
-            float py = 6.0f + (float)(rand() % 12);
+            float px = 18.0f + (float)(rand() % 36);   /* 6+rand%12 × 3 */
+            float py = 18.0f + (float)(rand() % 36);
             if (isWalkable((int)px, (int)py))
                 itemSpawn(ITEM_HEALTH, px, py);
         }
@@ -274,128 +274,105 @@ static void renderArmorModel(float bob) {
 
 /* ═══════════════════ RENDER PASS ═══════════════════ */
 static void renderItems(Player* player) {
-    int  i;
-    float det    = player->dirX * player->planeY - player->planeX * player->dirY;
-    float aspect = (float)SCREEN_W / (float)SCREEN_H;
+    int i;
+    float det = player->dirX * player->planeY - player->planeX * player->dirY;
+    int pitchInt = (int)player->pitch;
+    int horizY   = SCREEN_H / 2 + pitchInt;
 
     if (fabsf(det) < 0.00001f) det = 0.00001f;
 
-    /* ── 3D perspective pass matching raycaster + pitch ── */
-    glClear(GL_DEPTH_BUFFER_BIT);
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_LIGHTING);
-    glEnable(GL_LIGHT0);
-    glEnable(GL_COLOR_MATERIAL);
-    glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
-
-    {
-        GLfloat lPos[]  = { 0.0f, 1.5f, 0.0f, 0.0f };
-        GLfloat lAmb[]  = { 0.45f, 0.42f, 0.36f, 1.0f };
-        GLfloat lDiff[] = { 0.88f, 0.82f, 0.70f, 1.0f };
-        glLightfv(GL_LIGHT0, GL_POSITION, lPos);
-        glLightfv(GL_LIGHT0, GL_AMBIENT,  lAmb);
-        glLightfv(GL_LIGHT0, GL_DIFFUSE,  lDiff);
-    }
-
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glLoadIdentity();
-    /* Frustum shift to match raycaster pitch */
-    {
-        double near_d   = 0.05;
-        double far_d    = 30.0;
-        double planeLen = 0.66;
-        double half_w   = near_d * planeLen;
-        double half_h   = near_d * (planeLen / (double)aspect);
-        double ps       = (player->pitch / (SCREEN_H * 0.5)) * half_h;
-        glFrustum(-half_w, half_w, -half_h + ps, half_h + ps, near_d, far_d);
-    }
-
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadIdentity();
-    gluLookAt(
-        (double)player->x, 0.5, (double)player->y,
-        (double)(player->x + player->dirX), 0.5, (double)(player->y + player->dirY),
-        0.0, 1.0, 0.0
-    );
-
     for (i = 0; i < gNumItems; i++) {
-        Item*  it = &gItems[i];
-        float  dx, dy;
-        float  transformX, transformY;
-        int    scrX;
-        float  bob;
-        float  fadeAlpha;
+        Item* it = &gItems[i];
+        float dx, dy, tX, tY;
+        int   screenX, behindWall, col;
+        float fullH, floorY, sScale, bob;
+        int   spriteH, spriteW, sX0, sX1, sY0, sY1;
+        float fx0, fx1, fy0, fy1, midX, w, h;
+        float fadeAlpha = 1.0f;
 
         if (!it->active) continue;
 
         dx = it->x - player->x;
         dy = it->y - player->y;
 
-        /* Camera-space transform for z-buffer occlusion check */
-        transformX = (player->dirX * dy - player->dirY * dx) / det;
-        transformY = (player->planeY * dx - player->planeX * dy) / det;
+        tX = (player->dirX * dy - player->dirY * dx) / det;
+        tY = (player->planeY * dx - player->planeX * dy) / det;
+        if (tY <= 0.1f) continue;
 
-        if (transformY <= 0.1f) continue; /* behind camera */
-
-        scrX = (int)((float)(SCREEN_W / 2) * (1.0f + transformX / transformY));
-        if (scrX < 1 || scrX >= SCREEN_W - 1) continue;
-
-        /* Wall occlusion: sample columns proportional to projected size */
-        {
-            int col, behindWall = 1;
-            int projH = abs((int)(SCREEN_H / transformY));
-            int halfW = projH / 3;
-            if (halfW < 4)  halfW = 4;
-            if (halfW > 60) halfW = 60;
-            {
-                int step = (halfW <= 8) ? 1 : halfW / 5;
-                for (col = -halfW; col <= halfW; col += step) {
-                    int c = scrX + col;
-                    if (c >= 0 && c < SCREEN_W && zBuffer[c] >= transformY * 0.90f) {
-                        behindWall = 0; break;
-                    }
-                }
-            }
-            if (behindWall) continue;
-        }
-
-        /* Bobbing height */
-        bob = sinf(it->bobPhase) * 0.07f;
+        screenX = (int)((float)(SCREEN_W / 2) * (1.0f + tX / tY));
 
         /* Fade out last 4 seconds of lifetime */
-        fadeAlpha = 1.0f;
         if (it->lifetime > ITEM_LIFETIME - 4.0f) {
             fadeAlpha = (ITEM_LIFETIME - it->lifetime) / 4.0f;
+            if (fadeAlpha < 0.0f) fadeAlpha = 0.0f;
         }
 
-        glPushMatrix();
-        glTranslatef(it->x, 0.0f, it->y);
-        glRotatef(it->rotAngle, 0.0f, 1.0f, 0.0f);
+        /* Sprite dimensions — sits on floor */
+        bob = sinf(it->bobPhase) * 0.05f * tY; /* Bobbing effect */
+        fullH   = (float)SCREEN_H * WALL_HEIGHT_SCALE / tY;
+        floorY  = (float)horizY + fullH * 0.5f;
+
+        sScale = 0.40f; /* Base size for items */
+        spriteH = (int)(fullH * sScale);
+        if (spriteH < 2) spriteH = 2;
+        spriteW = spriteH;
+
+        sY1 = (int)floorY - (int)(fullH * bob);
+        sY0 = sY1 - spriteH;
+        sX0 = screenX - spriteW / 2;
+        sX1 = screenX + spriteW / 2;
+        if (sX1 < 0 || sX0 >= SCREEN_W || sY1 < 0 || sY0 >= SCREEN_H) continue;
+
+        /* Wall occlusion */
+        behindWall = 1;
+        { int step = (spriteW > 16) ? spriteW / 6 : 1;
+          for (col = sX0; col <= sX1; col += step)
+              if (col >= 0 && col < SCREEN_W && zBuffer[col] >= tY * 0.90f)
+                  { behindWall = 0; break; } }
+        if (behindWall) continue;
+
+        /* Clamp draw rect */
+        fx0  = (float)(sX0 < 0 ? 0 : sX0);
+        fx1  = (float)(sX1 >= SCREEN_W ? SCREEN_W-1 : sX1);
+        fy0  = (float)(sY0 < 0 ? 0 : sY0);
+        fy1  = (float)(sY1 >= SCREEN_H ? SCREEN_H-1 : sY1);
+        midX = (fx0 + fx1) * 0.5f;
+        w    = fx1 - fx0;
+        h    = fy1 - fy0;
+        if (w < 1 || h < 1) continue;
 
         if (fadeAlpha < 1.0f) {
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         }
 
-        switch (it->type) {
-            case ITEM_HEALTH: renderHealthModel(bob); break;
-            case ITEM_AMMO:   renderAmmoModel(bob);   break;
-            case ITEM_ARMOR:  renderArmorModel(bob);  break;
+        if (it->type == ITEM_HEALTH) {
+            /* Health Box: Red with white cross */
+            glColor4f(0.85f, 0.10f, 0.10f, fadeAlpha);
+            glBegin(GL_QUADS); glVertex2f(fx0,fy0); glVertex2f(fx1,fy0); glVertex2f(fx1,fy1); glVertex2f(fx0,fy1); glEnd();
+            /* White cross */
+            glColor4f(0.95f, 0.95f, 0.95f, fadeAlpha);
+            glBegin(GL_QUADS); glVertex2f(midX-w*0.3f, fy0+h*0.4f); glVertex2f(midX+w*0.3f, fy0+h*0.4f); glVertex2f(midX+w*0.3f, fy0+h*0.6f); glVertex2f(midX-w*0.3f, fy0+h*0.6f); glEnd();
+            glBegin(GL_QUADS); glVertex2f(midX-w*0.1f, fy0+h*0.2f); glVertex2f(midX+w*0.1f, fy0+h*0.2f); glVertex2f(midX+w*0.1f, fy0+h*0.8f); glVertex2f(midX-w*0.1f, fy0+h*0.8f); glEnd();
+        } else if (it->type == ITEM_AMMO) {
+            /* Ammo Box: Yellow */
+            glColor4f(0.85f, 0.78f, 0.10f, fadeAlpha);
+            glBegin(GL_QUADS); glVertex2f(fx0,fy0+h*0.2f); glVertex2f(fx1,fy0+h*0.2f); glVertex2f(fx1,fy1); glVertex2f(fx0,fy1); glEnd();
+            /* Dark lid */
+            glColor4f(0.72f, 0.64f, 0.08f, fadeAlpha);
+            glBegin(GL_QUADS); glVertex2f(fx0,fy0); glVertex2f(fx1,fy0); glVertex2f(fx1,fy0+h*0.2f); glVertex2f(fx0,fy0+h*0.2f); glEnd();
+        } else if (it->type == ITEM_ARMOR) {
+            /* Armor: Teal shield */
+            glColor4f(0.10f, 0.65f, 0.72f, fadeAlpha);
+            glBegin(GL_QUADS); glVertex2f(midX-w*0.4f,fy0); glVertex2f(midX+w*0.4f,fy0); glVertex2f(midX+w*0.4f,fy1-h*0.2f); glVertex2f(midX-w*0.4f,fy1-h*0.2f); glEnd();
+            glBegin(GL_TRIANGLES); glVertex2f(midX-w*0.4f,fy1-h*0.2f); glVertex2f(midX+w*0.4f,fy1-h*0.2f); glVertex2f(midX,fy1); glEnd();
+            /* Emblem */
+            glColor4f(0.90f, 0.90f, 0.25f, fadeAlpha);
+            glBegin(GL_QUADS); glVertex2f(midX-w*0.15f,fy0+h*0.3f); glVertex2f(midX+w*0.15f,fy0+h*0.3f); glVertex2f(midX+w*0.15f,fy0+h*0.6f); glVertex2f(midX-w*0.15f,fy0+h*0.6f); glEnd();
         }
 
         if (fadeAlpha < 1.0f) glDisable(GL_BLEND);
-
-        glPopMatrix();
     }
-
-    glMatrixMode(GL_PROJECTION); glPopMatrix();
-    glMatrixMode(GL_MODELVIEW);  glPopMatrix();
-
-    glDisable(GL_LIGHTING);
-    glDisable(GL_COLOR_MATERIAL);
-    glDisable(GL_DEPTH_TEST);
 }
 
 #endif /* ITEM_H */

@@ -1,8 +1,8 @@
 # Project: Project1
 # Makefile created by Dev-C++ 5.7.1
 
-CPP      = g++.exe
-CC       = gcc.exe
+CPP      = "C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/bin/g++.exe"
+CC       = "C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/bin/gcc.exe"
 WINDRES  = windres.exe
 OBJ      = main.o
 LINKOBJ  = main.o
@@ -10,8 +10,8 @@ LIBS     = -L"C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/Mi
 INCS     = -I"C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/include" -I"C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/mingw32/include" -I"C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/lib/gcc/mingw32/4.8.1/include"
 CXXINCS  = -I"C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/include" -I"C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/mingw32/include" -I"C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/lib/gcc/mingw32/4.8.1/include" -I"C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/lib/gcc/mingw32/4.8.1/include/c++"
 BIN      = tubesGame.exe
-CXXFLAGS = $(CXXINCS) -g3
-CFLAGS   = $(INCS) -g3 -DGLUT_STATIC
+CXXFLAGS = $(CXXINCS) -O2 -fpermissive
+CFLAGS   = $(INCS) -O2 -DGLUT_STATIC
 RM       = rm.exe -f
 
 .PHONY: all all-before all-after clean clean-custom
