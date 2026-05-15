@@ -1,66 +1,53 @@
 #ifndef PLAYER_H
 #define PLAYER_H
-
 #include <math.h>
-
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
-/* ───────────────────── Player Constants ───────────────────── */
-#define MOVE_SPEED    0.15f   /* 0.05f × MAP_SCALE(3) */
+#define MOVE_SPEED    0.15f   
 #define ROT_SPEED     0.03f
 #define MOUSE_SENS    0.003f
-#define MOUSE_SENS_Y  0.30f  /* vertical look sensitivity (pixels per mouse unit) */
-#define PITCH_MAX     180.0f /* max vertical offset in pixels */
-#define PLAYER_RADIUS 0.2f   /* collision radius */
+#define MOUSE_SENS_Y  0.30f  
+#define PITCH_MAX     180.0f 
+#define PLAYER_RADIUS 0.2f   
 
-/* ───────────────────── Player State ───────────────────── */
 typedef struct {
-    float x, y;        /* position in map coordinates */
-    float angle;        /* viewing angle in radians */
-    float dirX, dirY;   /* direction vector (derived from angle) */
-    float planeX, planeY; /* camera plane (perpendicular to dir, scaled by FOV) */
-    float pitch;        /* vertical look offset in pixels (+up / -down) */
-
+    float x, y;        
+    float angle;        
+    float dirX, dirY;   
+    float planeX, planeY; 
+    float pitch;        
     int health;
     int armor;
     int alive;
-
-    /* movement flags (set by keyboard input) */
+    
     int moveForward;
     int moveBackward;
     int strafeLeft;
     int strafeRight;
 } Player;
 
-/* Initialize player at starting position */
 static void playerInit(Player* p) {
     p->x = PLAYER_START_X;
     p->y = PLAYER_START_Y;
     p->angle = PLAYER_START_ANGLE;
-
-    /* Calculate direction from angle */
+    
     p->dirX = cosf(p->angle);
     p->dirY = sinf(p->angle);
-
-    /* Camera plane — FOV ~84 degrees for a wide, open feel */
-    /* plane length = tan(42deg) ≈ 0.90 */
+    
     p->planeX = -p->dirY * 0.90f;
     p->planeY =  p->dirX * 0.90f;
-
     p->pitch = 0.0f;
     p->health = 100;
     p->armor = 0;
     p->alive = 1;
-
     p->moveForward = 0;
     p->moveBackward = 0;
     p->strafeLeft = 0;
     p->strafeRight = 0;
 }
 
-/* Update direction and camera plane from current angle */
 static void playerUpdateDirection(Player* p) {
     p->dirX = cosf(p->angle);
     p->dirY = sinf(p->angle);
@@ -68,7 +55,6 @@ static void playerUpdateDirection(Player* p) {
     p->planeY =  p->dirX * 0.90f;
 }
 
-/* Rotate player by delta angle (from mouse movement) */
 static void playerRotate(Player* p, float deltaAngle) {
     p->angle += deltaAngle;
     while (p->angle < 0)       p->angle += 2.0f * (float)M_PI;
@@ -76,18 +62,15 @@ static void playerRotate(Player* p, float deltaAngle) {
     playerUpdateDirection(p);
 }
 
-/* Adjust vertical pitch (dy = raw mouse Y delta, positive = move down) */
 static void playerPitch(Player* p, int dy) {
     p->pitch -= dy * MOUSE_SENS_Y;
     if (p->pitch >  PITCH_MAX) p->pitch =  PITCH_MAX;
     if (p->pitch < -PITCH_MAX) p->pitch = -PITCH_MAX;
 }
 
-/* Move player with collision detection */
 static void playerMove(Player* p) {
     float moveX = 0, moveY = 0;
     float newX, newY;
-
     if (p->moveForward) {
         moveX += p->dirX * MOVE_SPEED;
         moveY += p->dirY * MOVE_SPEED;
@@ -104,19 +87,15 @@ static void playerMove(Player* p) {
         moveX += p->planeX * MOVE_SPEED;
         moveY += p->planeY * MOVE_SPEED;
     }
-
-    /* Apply movement with collision — check X and Y separately for wall sliding */
+    
     newX = p->x + moveX;
     newY = p->y + moveY;
-
-    /* Check X movement */
+    
     if (isWalkable(newX + PLAYER_RADIUS * (moveX > 0 ? 1 : -1), p->y)) {
         p->x = newX;
     }
-    /* Check Y movement */
     if (isWalkable(p->x, newY + PLAYER_RADIUS * (moveY > 0 ? 1 : -1))) {
         p->y = newY;
     }
 }
-
-#endif /* PLAYER_H */
+#endif 

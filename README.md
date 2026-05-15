@@ -6,7 +6,7 @@
 ![Language](https://img.shields.io/badge/Language-C%2B%2B-blue?style=flat-square)
 ![Renderer](https://img.shields.io/badge/Renderer-OpenGL-brightgreen?style=flat-square)
 ![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey?style=flat-square)
-![Status](https://img.shields.io/badge/Status-V4%20Selesai-success?style=flat-square)
+![Status](https://img.shields.io/badge/Status-V5%20Arena%20Mode-success?style=flat-square)
 
 ---
 
@@ -16,27 +16,31 @@ Game **First-Person Shooter (FPS)** bergaya retro terinspirasi dari DOOM Classic
 
 Engine raycasting menggunakan algoritma **DDA (Digital Differential Analyzer)** untuk menembakkan sinar per-kolom piksel, menghasilkan ilusi perspektif 3D yang autentik. Sementara itu, objek dalam dunia (senjata, musuh, item) dirender menggunakan **OpenGL 3D primitives** dengan frustum kamera yang disesuaikan.
 
-**Fitur unggulan:**
-- ✅ Raycasting engine dengan anti-fisheye correction dan distance fog
-- ✅ 3 jenis musuh dengan AI state machine (IDLE → CHASE → ATTACK → DYING → DEAD)
-- ✅ Sistem senjata 3D (Pistol + Shotgun) dengan recoil, muzzle flash, dan reload
-- ✅ Item pickup (Health, Ammo, Armor) dengan animasi float & rotate
-- ✅ HUD lengkap: crosshair, health bar, minimap, kill counter, wave indicator
+**Fitur unggulan terbaru (V5 - Arena Update):**
+- ✅ **Wave-Based Arena Combat**: Musuh muncul dalam 5 wave di ruangan tertentu. Pintu terkunci secara otomatis saat masuk, dan terbuka setelah semua wave selesai.
+- ✅ **Tekstur Lantai (BMP)**: Menggunakan file `Floor.bmp` dengan rendering lantai *single-zone* dan *distance fog* yang agresif untuk visual memukau tanpa aliasing (efek burik).
+- ✅ **Dungeon Cross Layout**: Peta skala besar (3x lebih luas) berbentuk *cross/plus* bergaya RPG.
+- ✅ **Raycasting Engine**: Anti-fisheye correction, *distance fog*, tembok tinggi untuk imersi.
+- ✅ **3 Jenis Musuh**: Imp (merah), Demon (tank hijau), Spectre (hantu biru) dengan AI state machine.
+- ✅ **Sistem Senjata 3D**: Pistol & Shotgun dengan recoil, muzzle flash, reload, dan peluru.
+- ✅ **HUD Interaktif**: Indikator Wave, status Arena, Crosshair, Health/Armor bar, Minimap, Kill Counter.
 
 ### ⚡ Optimasi Performa (Anti-Lag)
-Game ini mengimplementasikan teknik rendering yang sangat dioptimasi agar tetap berjalan lancar (30-60 FPS) meskipun peta dunia berukuran besar:
-1. **Batching Draw Calls (`GL_POINTS` & `GL_LINES`)**: Mengurangi drastis panggilan `glBegin`/`glEnd` ke OpenGL dengan menggabungkan ribuan perhitungan piksel lantai dan kolom tembok ke dalam satu instruksi besar.
-2. **Adaptive Raycasting Step**: Algoritma lantai pintar (*floor raycasting*) yang mengurangi beban hitungan tekstur berdasar jarak. Sistem memproses setiap 1 piksel untuk jarak dekat, setiap 2 piksel untuk jarak menengah, dan setiap 4 piksel untuk jarak jauh.
-3. **Occlusion & Fog Culling**: Sistem langsung melewati perhitungan untuk area lantai yang tertutup kabut tebal total (*fog*), menggantinya dengan blok warna solid secara instan.
-4. **Compiler Optimization (`-O2`)**: Memanfaatkan pengaturan *compiler* C++ tingkat lanjut (Level 2) untuk merampingkan perhitungan matematika mentah dan menghemat siklus prosesor saat dieksekusi.
+Game ini mengimplementasikan teknik rendering yang dioptimasi agar tetap berjalan lancar (30-60 FPS) meskipun peta dunia berukuran sangat besar:
+1. **Adaptive Skip Rendering**: Algoritma lantai (*floor raycasting*) pintar yang mengambil sampel piksel setiap langkah 2x2 atau 4x4 secara adaptif berdasarkan kedalaman (z-depth) agar tidak memberatkan CPU.
+2. **Batching Draw Calls (`GL_POINTS` & `GL_LINES`)**: Menggabungkan perhitungan piksel lantai dan tembok ke dalam satu instruksi.
+3. **Occlusion Culling**: Sistem hanya menggambar (*render*) objek dan musuh yang tidak tertutup dinding berkat Z-Buffer 1D array.
+4. **Compiler Optimization (`-O2`)**: Memanfaatkan pengaturan kompiler C++ untuk merampingkan matematika mentah.
 
 ---
 
-## 🗺️ Layout Peta
+## 🗺️ Layout Peta (Dungeon Cross)
 
-![Layout Peta](layoutMap.png)
-
-Peta berukuran **40×32** grid dengan beberapa zona berbeda: ruangan dalam bangunan, koridor penghubung, dan area terbuka untuk pertempuran.
+Peta berukuran skala besar (world size 120x96) dengan beberapa zona:
+- **Pusat (Hub)**: Area kayu perempatan di tengah.
+- **Top & Bottom Room**: *Arena Room* dengan mekanisme Wave. Saat dimasuki, pintu terkunci dan Anda harus bertahan dari 5 wave musuh!
+- **Left Room**: Ruang spawn / awal pemain.
+- **Right Room**: Ruang ekstra luas untuk mencari *item pickup* (Health/Ammo/Armor).
 
 ---
 
@@ -53,7 +57,7 @@ Peta berukuran **40×32** grid dengan beberapa zona berbeda: ruangan dalam bangu
 | `1` | Switch ke Pistol |
 | `2` | Switch ke Shotgun |
 | **Scroll Mouse** | Ganti senjata |
-| `F5` | Respawn / Restart level |
+| `F5` | Respawn / Restart level & Reset Arena |
 | `ESC` | Keluar |
 
 ---
@@ -71,30 +75,14 @@ Peta berukuran **40×32** grid dengan beberapa zona berbeda: ruangan dalam bangu
 > Sangat direkomendasikan jika sering mengedit file kode tanpa membuka Dev-C++ terus menerus.
 
 ```powershell
-# Force recompile (Hapus cache object & Build ulang)
-Remove-Item -Force main.o -ErrorAction SilentlyContinue; mingw32-make -f Makefile.win
+# Compile & Run menggunakan G++
+$cpp = "C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/bin/g++.exe"
+$inc = "C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/include"
+$lib = "C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/lib"
 
-# Jalankan game
-.\tubesGame.exe
-```
+& $cpp -c main.cpp -o main.o -I"$inc" -O2 -fpermissive
+& $cpp main.o -o tubesGame.exe -L"$lib" -static-libstdc++ -static-libgcc -mwindows -lglut32 -lglu32 -lopengl32 -lwinmm -lgdi32
 
-### 🔧 Menggunakan Command Line (MinGW32)
-
-> Pastikan MinGW32 (Dev-C++ GTI MOD) sudah terinstall.
-
-```bash
-# Step 1 — Compile
-g++.exe -c main.cpp -o main.o ^
-  -I"C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/include" ^
-  -g3
-
-# Step 2 — Link & Build EXE
-g++.exe main.o -o tubesGame.exe ^
-  -L"C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/lib" ^
-  -static-libstdc++ -static-libgcc -mwindows ^
-  -lglut32 -lglu32 -lopengl32 -lwinmm -lgdi32 -g3
-
-# Step 3 — Jalankan
 .\tubesGame.exe
 ```
 
@@ -105,16 +93,17 @@ g++.exe main.o -o tubesGame.exe ^
 ```
 gameDOOM/
 ├── main.cpp          # Entry point, game loop, input handler (keyboard & mouse)
-├── map.h             # Data level — grid 40×32, definisi tipe sel & warna dinding
+├── map.h             # Data level — Dungeon layout, definisi tipe sel & warna dinding
 ├── player.h          # State player, movement WASD, collision, mouse look
-├── raycaster.h       # Engine raycasting DDA — render dinding, lantai, langit-langit
-├── texture.h         # Utilitas warna: clamp, lerp, distance fog
+├── raycaster.h       # Engine raycasting DDA — render dinding, lantai tekstur (BMP), langit-langit
+├── texture.h         # Utilitas pemuatan tekstur BMP (Floor.bmp) dan helper warna
 ├── weapon.h          # Sistem senjata 3D, projectile, recoil, muzzle flash
-├── enemy.h           # AI musuh 3D (Imp, Demon, Spectre) + state machine
-├── item.h            # Item pickup 3D (Health, Ammo, Armor) + wave system
-├── hud.h             # Overlay HUD: crosshair, health bar, minimap, score
+├── enemy.h           # Sistem Wave Arena, AI musuh 3D (Imp, Demon, Spectre), collision
+├── item.h            # Item pickup 3D (Health, Ammo, Armor)
+├── hud.h             # Overlay HUD: Arena wave panel, crosshair, minimap, score
 ├── Makefile.win      # Build configuration untuk Dev-C++ / MinGW32
-├── layoutMap.png     # Visualisasi layout peta
+├── layoutMap.png     # Visualisasi layout peta asli
+├── Floor.bmp         # File gambar tekstur lantai
 ├── README.md         # Dokumen ini
 └── DOCS.md           # Dokumentasi teknis lengkap per-file
 ```
@@ -125,11 +114,11 @@ gameDOOM/
 
 | Versi | Status | Fitur Utama |
 |-------|--------|-------------|
-| **V1** | ✅ Selesai | Core engine, raycasting DDA, peta grid, movement WASD, mouse look, HUD dasar |
-| **V2** | ✅ Selesai | Senjata 3D (Pistol + Shotgun), projectile, recoil, muzzle flash, reload, weapon bob |
-| **V3** | ✅ Selesai | 3 tipe musuh 3D, AI state machine, hit detection, damage flash, kill counter, minimap dot |
-| **V4** | ✅ Selesai | Item drop (Health/Ammo/Armor), pickup otomatis, animasi float+rotate, score, wave system |
-| **V5** | 🔲 Pending | Menu screen, sound (WinMM), multiple levels, door interaktif, highscore leaderboard |
+| **V1** | ✅ Selesai | Core engine, raycasting DDA, peta grid, movement WASD, mouse look |
+| **V2** | ✅ Selesai | Senjata 3D (Pistol + Shotgun), projectile, recoil, reload |
+| **V3** | ✅ Selesai | 3 tipe musuh 3D, AI state machine, hit detection, kill counter |
+| **V4** | ✅ Selesai | Item drop (Health/Ammo/Armor), HUD lengkap, minimap |
+| **V5** | ✅ Selesai | Arena Wave system, dungeon map scale 3x, texturing lantai (BMP), optimasi |
 
 ---
 
@@ -137,20 +126,12 @@ gameDOOM/
 
 | Komponen | Detail |
 |----------|--------|
-| Bahasa | C++ (C99/C++11) |
+| Bahasa | C++ |
 | Compiler | GCC 4.8.1 via MinGW32 |
 | IDE | Dev-C++ GTI MOD |
 | Windowing | FreeGLUT (`glut32`) |
 | Rendering | OpenGL fixed-function pipeline |
 | Math | `math.h` standar (sin, cos, atan2, sqrtf) |
-
----
-
-## 📚 Referensi
-
-- [Lode's Raycasting Tutorial](https://lodev.org/cgtutor/raycasting.html) — Dasar algoritma DDA raycasting
-- [DOOM Classic (1993)](https://en.wikipedia.org/wiki/Doom_(1993_video_game)) — Referensi desain game
-- [Call of Duty — Nuketown](https://callofduty.fandom.com/wiki/Nuketown) — Referensi desain peta
 
 ---
 
@@ -263,27 +244,4 @@ git merge dev
 
 # 3. Push ke remote
 git push origin main
-```
-
----
-
-### 💡 Tips Menghindari Konflik
-
-| Tips | Penjelasan |
-|------|------------|
-| **Bagi file per orang** | Usahakan tiap orang punya file yang dikerjakan sendiri (misal: orang1 → `enemy.h`, orang2 → `item.h`) |
-| **Commit sering & kecil** | Jangan numpuk perubahan besar, commit tiap fitur kecil selesai |
-| **Pull sebelum mulai** | Selalu `git pull origin dev` sebelum mulai coding baru |
-| **Pesan commit jelas** | Gunakan format: `feat:`, `fix:`, `docs:`, `refactor:` di depan pesan |
-| **Komunikasi tim** | Kalau mau edit file yang sama, kabari anggota lain dulu |
-
----
-
-### 📝 Contoh Pesan Commit yang Baik
-
-```bash
-git commit -m "feat: tambah AI state ATTACK untuk Demon enemy"
-git commit -m "fix: perbaiki crash saat ammo habis dan tembak"
-git commit -m "docs: update README tambah kontrol keyboard"
-git commit -m "refactor: pisah renderItem jadi fungsi terpisah"
 ```
