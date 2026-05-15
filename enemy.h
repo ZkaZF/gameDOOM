@@ -1,13 +1,11 @@
 #ifndef ENEMY_H
 #define ENEMY_H
-
 #include <GL/glut.h>
 #include <math.h>
 #include <string.h>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
-
 #define ENEMY_IMP      0
 #define ENEMY_DEMON    1
 #define ENEMY_SPECTRE  2
@@ -20,14 +18,12 @@
 #define MAX_ENEMIES    30   
 #define DETECT_RANGE   24.0f   
 #define DEATH_DURATION 1.3f
-
 #define ARENA_INACTIVE   0
 #define ARENA_ACTIVE     1
 #define ARENA_COOLDOWN   2
 #define ARENA_COMPLETE   3
 #define ARENA_TOTAL_WAVES 5
 #define ARENA_COOLDOWN_TIME 2.5f  
-
 typedef struct {
     int   type;
     int   state;
@@ -43,7 +39,6 @@ typedef struct {
     int   active;
     int   arenaId;   
 } Enemy;
-
 typedef struct {
     int   state;          
     int   currentWave;    
@@ -60,14 +55,11 @@ typedef struct {
     char  statusMsg[48];
     float statusTimer;    
 } ArenaRoom;
-
 static Enemy    gEnemies[MAX_ENEMIES];
 static int      gNumEnemies = 0;
 static int      gKillCount  = 0;
 static ArenaRoom gArenas[2]; 
-
 static float gDamageFlash = 0.0f;
-
 static void enemySpawn(int type, float x, float y) {
     Enemy* e;
     if (gNumEnemies >= MAX_ENEMIES) return;
@@ -141,7 +133,6 @@ static void enemySpawnArena(int type, float x, float y, int arenaId) {
             break;
     }
 }
-
 static void arenaLockDoor(ArenaRoom* a) {
     int i;
     for (i = 0; i < a->numDoorTiles; i++)
@@ -152,7 +143,6 @@ static void arenaUnlockDoor(ArenaRoom* a) {
     for (i = 0; i < a->numDoorTiles; i++)
         worldMap[a->doorTiles[i][1]][a->doorTiles[i][0]] = 0;
 }
-
 static int gWaveTop[5][3] = {
     {3, 0, 0},   
     {2, 0, 1},   
@@ -175,7 +165,6 @@ static void arenaSpawnWave(ArenaRoom* a) {
     imp = waveTable[w][0];
     dem = waveTable[w][1];
     spc = waveTable[w][2];
-    
     si = 0;
     for (i = 0; i < imp; i++) {
         int sp = si % a->numSpawns;
@@ -195,7 +184,6 @@ static void arenaSpawnWave(ArenaRoom* a) {
     sprintf(a->statusMsg, "WAVE %d / %d", w + 1, ARENA_TOTAL_WAVES);
     a->waveJustSpawned = 1; 
 }
-
 static int arenaAliveCount(int arenaId) {
     int i, c = 0;
     for (i = 0; i < gNumEnemies; i++) {
@@ -206,7 +194,6 @@ static int arenaAliveCount(int arenaId) {
     }
     return c;
 }
-
 static void arenaInit(void) {
     int i;
     ArenaRoom* t    = &gArenas[0];
@@ -228,7 +215,6 @@ static void arenaInit(void) {
     t->spawnX[3] = 60.0f; t->spawnY[3] = 37.5f;  
     t->spawnX[4] = 46.5f; t->spawnY[4] = 25.5f;  
     sprintf(t->statusMsg, "");
-    
     ArenaRoom* b   = &gArenas[1];
     memset(b, 0, sizeof(ArenaRoom));
     b->arenaId     = 1;
@@ -249,7 +235,6 @@ static void arenaInit(void) {
     b->spawnX[4] = 46.5f; b->spawnY[4] = 114.0f;
     sprintf(b->statusMsg, "");
 }
-
 static void arenaUpdate(Player* player, float dt) {
     int ai;
     for (ai = 0; ai < 2; ai++) {
@@ -311,19 +296,15 @@ static void arenaUpdate(Player* player, float dt) {
         }
     }
 }
-
 static void enemyInitLevel(void) {
     memset(gEnemies, 0, sizeof(gEnemies));
     gNumEnemies  = 0;
     gKillCount   = 0;
     gDamageFlash = 0.0f;
-    
     arenaUnlockDoor(&gArenas[0]);
     arenaUnlockDoor(&gArenas[1]);
     arenaInit();
-    
 }
-
 static void enemyHit(Enemy* e, int damage) {
     if (e->state == STATE_DEAD || e->state == STATE_DYING) return;
     e->hp -= (float)damage;
@@ -336,7 +317,6 @@ static void enemyHit(Enemy* e, int damage) {
         if (e->state == STATE_IDLE) e->state = STATE_CHASE;
     }
 }
-
 static void enemyCheckProjectiles(void) {
     int i, j;
     for (j = 0; j < MAX_PROJECTILES; j++) {
@@ -357,7 +337,6 @@ static void enemyCheckProjectiles(void) {
         }
     }
 }
-
 static void enemyUpdate(Player* player, float dt) {
     arenaUpdate(player, dt);
     int i;
@@ -384,13 +363,11 @@ static void enemyUpdate(Player* player, float dt) {
                 } else {
                     e->stateTimer = 0.0f;
                 }
-                
                 if (dist <= e->atkRange) {
                     e->state    = STATE_ATTACK;
                     e->atkTimer = 0.0f;
                     break;
                 }
-                
                 if (dist > 0.01f) {
                     float spd = e->speed;
                     if (e->type == ENEMY_SPECTRE && dist < 7.5f) {  
@@ -434,29 +411,22 @@ static void enemyUpdate(Player* player, float dt) {
         }
     }
 }
-
-
 static void renderImpModel(float death) {
     float sink = -death * 0.55f;
     float tilt = death * 72.0f;
     glPushMatrix();
     glTranslatef(0.0f, sink, 0.0f);
     glRotatef(-tilt, 1.0f, 0.0f, 0.0f);
-    
     glColor3f(0.62f, 0.12f, 0.08f);
     glPushMatrix(); glScalef(0.36f, 0.42f, 0.26f); glutSolidCube(1.0f); glPopMatrix();
-    
     glColor3f(0.72f, 0.19f, 0.10f);
     glPushMatrix(); glTranslatef(0.0f, 0.38f, 0.0f); glutSolidSphere(0.22f, 10, 8); glPopMatrix();
-    
     glColor3f(0.28f, 0.08f, 0.04f);
     glPushMatrix(); glTranslatef(-0.10f, 0.56f, 0.0f); glRotatef(-20.0f, 0.0f, 0.0f, 1.0f); glutSolidCone(0.05f, 0.20f, 6, 1); glPopMatrix();
     glPushMatrix(); glTranslatef( 0.10f, 0.56f, 0.0f); glRotatef( 20.0f, 0.0f, 0.0f, 1.0f); glutSolidCone(0.05f, 0.20f, 6, 1); glPopMatrix();
-    
     glColor3f(1.0f, 0.85f, 0.0f);
     glPushMatrix(); glTranslatef(-0.09f, 0.41f, 0.18f); glutSolidSphere(0.05f, 6, 4); glPopMatrix();
     glPushMatrix(); glTranslatef( 0.09f, 0.41f, 0.18f); glutSolidSphere(0.05f, 6, 4); glPopMatrix();
-    
     glColor3f(0.55f, 0.11f, 0.07f);
     if (gQuad) {
         glPushMatrix(); glTranslatef(-0.22f, 0.08f, 0.0f); glRotatef(20.0f, 0.0f, 0.0f, 1.0f); glRotatef(90.0f, 1.0f, 0.0f, 0.0f); gluCylinder(gQuad, 0.058f, 0.042f, 0.30f, 6, 1); glPopMatrix();
@@ -467,24 +437,19 @@ static void renderImpModel(float death) {
     }
     glPopMatrix();
 }
-
 static void renderDemonModel(float death) {
     float sink = -death * 0.60f;
     float tilt = death * 58.0f;
     glPushMatrix();
     glTranslatef(0.0f, sink, 0.0f);
     glRotatef(-tilt, 1.0f, 0.0f, 0.0f);
-    
     glColor3f(0.15f, 0.38f, 0.14f);
     glPushMatrix(); glScalef(0.56f, 0.58f, 0.42f); glutSolidCube(1.0f); glPopMatrix();
-    
     glColor3f(0.20f, 0.45f, 0.17f);
     glPushMatrix(); glTranslatef(0.0f, 0.44f, 0.0f); glutSolidSphere(0.30f, 10, 8); glPopMatrix();
-    
     glColor3f(0.95f, 0.12f, 0.05f);
     glPushMatrix(); glTranslatef(-0.12f, 0.48f, 0.26f); glutSolidSphere(0.07f, 6, 4); glPopMatrix();
     glPushMatrix(); glTranslatef( 0.12f, 0.48f, 0.26f); glutSolidSphere(0.07f, 6, 4); glPopMatrix();
-    
     glColor3f(0.17f, 0.40f, 0.14f);
     if (gQuad) {
         glPushMatrix(); glTranslatef(-0.40f, 0.10f, 0.0f); glRotatef(15.0f, 0.0f, 0.0f, 1.0f); glRotatef(90.0f, 1.0f, 0.0f, 0.0f); gluCylinder(gQuad, 0.10f, 0.08f, 0.40f, 8, 1); glPopMatrix();
@@ -495,7 +460,6 @@ static void renderDemonModel(float death) {
     }
     glPopMatrix();
 }
-
 static void renderSpectreModel(float death) {
     float sink  = -death * 0.80f;
     float alpha = 0.68f * (1.0f - death * 0.92f);
@@ -504,17 +468,13 @@ static void renderSpectreModel(float death) {
     glTranslatef(0.0f, sink + (float)(sin(t * 3.2) * 0.04f), 0.0f);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    
     glColor4f(0.10f, 0.52f, 0.82f, alpha);
     glPushMatrix(); glScalef(0.28f, 0.50f, 0.22f); glutSolidSphere(1.0f, 10, 8); glPopMatrix();
-    
     glColor4f(0.45f, 0.88f, 1.0f, alpha * 1.1f);
     glPushMatrix(); glScalef(0.14f, 0.26f, 0.12f); glutSolidSphere(1.0f, 8, 6); glPopMatrix();
-    
     glColor4f(0.85f, 1.0f, 1.0f, 0.95f * (1.0f - death));
     glPushMatrix(); glTranslatef(-0.10f, 0.19f, 0.20f); glutSolidSphere(0.062f, 6, 4); glPopMatrix();
     glPushMatrix(); glTranslatef( 0.10f, 0.19f, 0.20f); glutSolidSphere(0.062f, 6, 4); glPopMatrix();
-    
     glColor4f(0.08f, 0.38f, 0.65f, alpha * 0.75f);
     if (gQuad) {
         int k;
@@ -531,7 +491,6 @@ static void renderSpectreModel(float death) {
     glDisable(GL_BLEND);
     glPopMatrix();
 }
-
 static void renderEnemies(Player* player) {
     int   sortIdx[MAX_ENEMIES];
     float sortDist[MAX_ENEMIES];
@@ -540,7 +499,6 @@ static void renderEnemies(Player* player) {
     det = player->dirX * player->planeY - player->planeX * player->dirY;
     if (fabsf(det) < 0.00001f) det = 0.00001f;
     aspect = (float)SCREEN_W / (float)SCREEN_H;
-    
     {
         int i;
         for (i = 0; i < gNumEnemies; i++) {
@@ -554,7 +512,6 @@ static void renderEnemies(Player* player) {
             n++;
         }
     }
-    
     for (si = 1; si < n; si++) {
         int   idxTmp  = sortIdx[si];
         float distTmp = sortDist[si];
@@ -567,7 +524,6 @@ static void renderEnemies(Player* player) {
         sortIdx[sj + 1]  = idxTmp;
         sortDist[sj + 1] = distTmp;
     }
-    
     {
         int k;
         int pitchInt = (int)player->pitch;
@@ -585,7 +541,6 @@ static void renderEnemies(Player* player) {
             tY = (player->planeY * dx - player->planeX * dy) / det;
             if (tY <= 0.1f) continue;
             screenX = (int)((float)(SCREEN_W / 2) * (1.0f + tX / tY));
-            
             sScale = (e->type == ENEMY_DEMON) ? 0.90f :
                      (e->type == ENEMY_SPECTRE) ? 0.70f : 0.80f;
             if (e->state == STATE_DYING) {
@@ -593,7 +548,6 @@ static void renderEnemies(Player* player) {
                 if (t > 1.0f) t = 1.0f;
                 sScale *= (1.0f - t * 0.85f);
             }
-            
             fullH   = (float)SCREEN_H * WALL_HEIGHT_SCALE / tY;
             floorY  = (float)horizY + fullH * 0.5f;
             spriteH = (int)(fullH * sScale);
@@ -604,7 +558,6 @@ static void renderEnemies(Player* player) {
             sX0 = screenX - spriteW / 2;
             sX1 = screenX + spriteW / 2;
             if (sX1 < 0 || sX0 >= SCREEN_W || sY1 < 0 || sY0 >= SCREEN_H) continue;
-            
             behindWall = 1;
             { int step = (spriteW > 16) ? spriteW / 6 : 1;
               for (col = sX0; col <= sX1; col += step)
@@ -613,7 +566,6 @@ static void renderEnemies(Player* player) {
             if (behindWall) continue;
             shade = 1.0f - tY / 48.0f;
             if (shade < 0.15f) shade = 0.15f;
-            
             fx0  = (float)(sX0 < 0 ? 0 : sX0);
             fx1  = (float)(sX1 >= SCREEN_W ? SCREEN_W-1 : sX1);
             fy0  = (float)(sY0 < 0 ? 0 : sY0);
@@ -646,7 +598,6 @@ static void renderEnemies(Player* player) {
                 glColor3f(0.20f*shade, 0.85f*shade, 0.90f*shade);
                 glBegin(GL_QUADS); glVertex2f(midX-w*0.10f,(fy0+fy1)*0.5f-h*0.12f); glVertex2f(midX+w*0.10f,(fy0+fy1)*0.5f-h*0.12f); glVertex2f(midX+w*0.10f,(fy0+fy1)*0.5f+h*0.05f); glVertex2f(midX-w*0.10f,(fy0+fy1)*0.5f+h*0.05f); glEnd();
             }
-            
             if (e->state != STATE_DYING && e->state != STATE_DEAD && tY < 21.0f) {
                 float hr  = e->hp / e->maxHp;
                 float barY = fy0 - (h > 40 ? h*0.08f : 4.0f);
@@ -660,7 +611,6 @@ static void renderEnemies(Player* player) {
             }
         }
     }
-
 }
 static int enemyGetKillCount(void) { return gKillCount; }
 static int enemyGetAliveCount(void) {

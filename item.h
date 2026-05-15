@@ -1,6 +1,5 @@
 #ifndef ITEM_H
 #define ITEM_H
-
 #include <GL/glut.h>
 #include <math.h>
 #include <string.h>
@@ -8,7 +7,6 @@
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
-
 #define ITEM_HEALTH  0
 #define ITEM_AMMO    1
 #define ITEM_ARMOR   2
@@ -18,7 +16,6 @@
 #define ITEM_BOB_SPEED 2.4f    
 #define ITEM_ROT_SPEED 90.0f   
 #define ITEM_LIFETIME  25.0f   
-
 typedef struct {
     int   type;
     float x, y;
@@ -27,16 +24,13 @@ typedef struct {
     float lifetime;    
     int   active;
 } Item;
-
 static Item  gItems[MAX_ITEMS];
 static int   gNumItems  = 0;
 static int   gPlayerScore = 0;
 static int   gWave        = 1;
 static float gWaveTimer   = 0.0f;   
-
 static int   itemGetScore(void)    { return gPlayerScore; }
 static int   itemGetWave(void)     { return gWave; }
-
 static void itemSpawn(int type, float x, float y) {
     int i;
     for (i = 0; i < MAX_ITEMS; i++) {
@@ -53,14 +47,12 @@ static void itemSpawn(int type, float x, float y) {
         }
     }
 }
-
 static void itemTryDrop(float x, float y) {
     int roll = rand() % 100;
     if      (roll < 35) itemSpawn(ITEM_HEALTH, x, y);
     else if (roll < 85) itemSpawn(ITEM_AMMO,   x, y);
     else                itemSpawn(ITEM_ARMOR,   x, y);
 }
-
 static void itemInit(void) {
     memset(gItems, 0, sizeof(gItems));
     gNumItems    = 0;
@@ -68,7 +60,6 @@ static void itemInit(void) {
     gWave        = 1;
     gWaveTimer   = 0.0f;
 }
-
 static void itemCheckWave(float dt) {
     int alive = enemyGetAliveCount();
     if (alive > 0) {
@@ -90,7 +81,6 @@ static void itemCheckWave(float dt) {
         }
     }
 }
-
 static void itemApplyPickup(Item* it, Player* player) {
     switch (it->type) {
         case ITEM_HEALTH:
@@ -112,12 +102,9 @@ static void itemApplyPickup(Item* it, Player* player) {
             break;
     }
 }
-
 static void itemUpdate(Player* player, float dt) {
     int i;
-    
     itemCheckWave(dt);
-    
     for (i = 0; i < gNumEnemies; i++) {
         Enemy* e = &gEnemies[i];
         if (e->state == STATE_DYING && e->deathTimer < dt * 1.5f && e->active) {
@@ -125,7 +112,6 @@ static void itemUpdate(Player* player, float dt) {
             gPlayerScore += 50 + (e->type == ENEMY_DEMON ? 100 : e->type == ENEMY_SPECTRE ? 30 : 0);
         }
     }
-    
     for (i = 0; i < gNumItems; i++) {
         Item* it = &gItems[i];
         float dx, dy, dist;
@@ -134,12 +120,10 @@ static void itemUpdate(Player* player, float dt) {
         if (it->rotAngle >= 360.0f) it->rotAngle -= 360.0f;
         it->bobPhase  += ITEM_BOB_SPEED * dt;
         it->lifetime  += dt;
-        
         if (it->lifetime >= ITEM_LIFETIME) {
             it->active = 0;
             continue;
         }
-        
         dx   = player->x - it->x;
         dy   = player->y - it->y;
         dist = sqrtf(dx * dx + dy * dy);
@@ -149,46 +133,34 @@ static void itemUpdate(Player* player, float dt) {
         }
     }
 }
-
-
 static void renderHealthModel(float bob) {
     glPushMatrix();
     glTranslatef(0.0f, 0.18f + bob, 0.0f);
-    
     glColor3f(0.85f, 0.10f, 0.10f);
     glPushMatrix(); glScalef(0.30f, 0.30f, 0.30f); glutSolidCube(1.0f); glPopMatrix();
-    
     glColor3f(0.95f, 0.95f, 0.95f);
     glPushMatrix(); glScalef(0.26f, 0.08f, 0.07f); glutSolidCube(1.0f); glPopMatrix();
     glPushMatrix(); glScalef(0.08f, 0.26f, 0.07f); glutSolidCube(1.0f); glPopMatrix();
-    
     glColor3f(1.0f, 0.45f, 0.45f);
     glPushMatrix(); glScalef(0.32f, 0.32f, 0.32f); glutWireCube(1.0f); glPopMatrix();
     glPopMatrix();
 }
-
 static void renderAmmoModel(float bob) {
     glPushMatrix();
     glTranslatef(0.0f, 0.16f + bob, 0.0f);
-    
     glColor3f(0.85f, 0.78f, 0.10f);
     glPushMatrix(); glScalef(0.34f, 0.22f, 0.26f); glutSolidCube(1.0f); glPopMatrix();
-    
     glColor3f(0.72f, 0.64f, 0.08f);
     glPushMatrix(); glTranslatef(0.0f, 0.12f, 0.0f); glScalef(0.36f, 0.06f, 0.28f); glutSolidCube(1.0f); glPopMatrix();
-    
     glColor3f(0.22f, 0.18f, 0.04f);
     glPushMatrix(); glTranslatef(0.0f, 0.0f, 0.14f); glScalef(0.10f, 0.16f, 0.02f); glutSolidCube(1.0f); glPopMatrix();
     glPopMatrix();
 }
-
 static void renderArmorModel(float bob) {
     glPushMatrix();
     glTranslatef(0.0f, 0.24f + bob, 0.0f);
-    
     glColor3f(0.10f, 0.65f, 0.72f);
     glPushMatrix(); glScalef(0.28f, 0.36f, 0.14f); glutSolidCube(1.0f); glPopMatrix();
-    
     glColor3f(0.15f, 0.80f, 0.88f);
     if (gQuad) {
         glPushMatrix();
@@ -197,15 +169,12 @@ static void renderArmorModel(float bob) {
             gluCylinder(gQuad, 0.14f, 0.10f, 0.10f, 10, 1);
         glPopMatrix();
     }
-    
     glColor3f(0.90f, 0.90f, 0.25f);
     glPushMatrix(); glScalef(0.09f, 0.12f, 0.08f); glutSolidCube(1.0f); glPopMatrix();
-    
     glColor3f(0.35f, 0.95f, 1.0f);
     glPushMatrix(); glScalef(0.30f, 0.38f, 0.16f); glutWireCube(1.0f); glPopMatrix();
     glPopMatrix();
 }
-
 static void renderItems(Player* player) {
     int i;
     float det = player->dirX * player->planeY - player->planeX * player->dirY;
@@ -227,12 +196,10 @@ static void renderItems(Player* player) {
         tY = (player->planeY * dx - player->planeX * dy) / det;
         if (tY <= 0.1f) continue;
         screenX = (int)((float)(SCREEN_W / 2) * (1.0f + tX / tY));
-        
         if (it->lifetime > ITEM_LIFETIME - 4.0f) {
             fadeAlpha = (ITEM_LIFETIME - it->lifetime) / 4.0f;
             if (fadeAlpha < 0.0f) fadeAlpha = 0.0f;
         }
-        
         bob = sinf(it->bobPhase) * 0.05f * tY; 
         fullH   = (float)SCREEN_H * WALL_HEIGHT_SCALE / tY;
         floorY  = (float)horizY + fullH * 0.5f;
@@ -245,14 +212,12 @@ static void renderItems(Player* player) {
         sX0 = screenX - spriteW / 2;
         sX1 = screenX + spriteW / 2;
         if (sX1 < 0 || sX0 >= SCREEN_W || sY1 < 0 || sY0 >= SCREEN_H) continue;
-        
         behindWall = 1;
         { int step = (spriteW > 16) ? spriteW / 6 : 1;
           for (col = sX0; col <= sX1; col += step)
               if (col >= 0 && col < SCREEN_W && zBuffer[col] >= tY * 0.90f)
                   { behindWall = 0; break; } }
         if (behindWall) continue;
-        
         fx0  = (float)(sX0 < 0 ? 0 : sX0);
         fx1  = (float)(sX1 >= SCREEN_W ? SCREEN_W-1 : sX1);
         fy0  = (float)(sY0 < 0 ? 0 : sY0);

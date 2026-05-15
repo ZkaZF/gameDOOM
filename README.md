@@ -137,12 +137,12 @@ gameDOOM/
 
 ## 👥 Anggota Tim
 
-| Nama | NIM | Branch |
-|------|-----|--------|
-| *(isi nama)* | *(isi NIM)* | `dev/orang1` |
-| *(isi nama)* | *(isi NIM)* | `dev/orang2` |
-| *(isi nama)* | *(isi NIM)* | `dev/orang3` |
-| *(isi nama)* | *(isi NIM)* | `dev/orang4` |
+| Nama | NIM |
+|------|-----|
+| *Azka Wayasy Al Hafizh* | *24060124140161* | 
+| *Menza Isaiah Tampubolon* | *24060124140138* | 
+| *Ikrar Maheswara Rabbani Wibowo* | *24060124140202* | 
+| *Ali Maskan Ferry Purwanto* | *24060124130072* | 
 
 ---
 

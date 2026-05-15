@@ -1,10 +1,8 @@
 #ifndef HUD_H
 #define HUD_H
-
 #include <GL/glut.h>
 #include <stdio.h>
 #include <string.h>
-
 static void drawText(float x, float y, const char* txt, void* font) {
     const char* c;
     glRasterPos2f(x, y);
@@ -30,7 +28,6 @@ static void strokeRect(float x, float y, float w, float h) {
         glVertex2f(x + w, y + h); glVertex2f(x,     y + h);
     glEnd();
 }
-
 static void drawCrosshair(void) {
     float cx = SCREEN_W / 2.0f, cy = SCREEN_H / 2.0f;
     float sz = 10.0f, gap = 4.0f;
@@ -53,7 +50,6 @@ static void drawCrosshair(void) {
     glBegin(GL_POINTS); glVertex2f(cx, cy); glEnd();
     glLineWidth(1.0f); glPointSize(1.0f);
 }
-
 static void drawStatusBarBG(void) {
     float bh = 52.0f;
     glBegin(GL_QUADS);
@@ -71,7 +67,6 @@ static void drawStatusBarBG(void) {
     glEnd();
     glLineWidth(1.0f);
 }
-
 static void drawHealthBar(int health) {
     float bx = 20.0f, by = SCREEN_H - 38.0f;
     float bw = 190.0f, bh = 18.0f;
@@ -80,29 +75,23 @@ static void drawHealthBar(int health) {
     int   seg;
     if (r < 0.0f) r = 0.0f;
     if (r > 1.0f) r = 1.0f;
-    
     glColor4f(0.08f, 0.08f, 0.08f, 0.90f);
     fillRect(bx - 2, by - 2, bw + 4, bh + 4);
-    
     if (r > 0.5f)       glColor3f(0.08f, 0.82f, 0.22f);
     else if (r > 0.25f) glColor3f(0.90f, 0.72f, 0.08f);
     else                glColor3f(0.90f, 0.12f, 0.10f);
     fillRect(bx, by, bw * r, bh);
-    
     glColor4f(0.0f, 0.0f, 0.0f, 0.40f);
     for (seg = 1; seg < 10; seg++) {
         float sx = bx + bw * (float)seg / 10.0f;
         glBegin(GL_LINES); glVertex2f(sx, by); glVertex2f(sx, by + bh); glEnd();
     }
-    
     glColor4f(0.55f, 0.55f, 0.60f, 0.90f);
     strokeRect(bx, by, bw, bh);
-    
     glColor3f(0.95f, 0.95f, 0.95f);
     sprintf(txt, "HP %d", health);
     drawText(bx + 6, by + 13, txt, GLUT_BITMAP_HELVETICA_12);
 }
-
 static void drawArmorBar(int armor) {
     float bx = 20.0f, by = SCREEN_H - 62.0f;
     float bw = 190.0f, bh = 14.0f;
@@ -120,7 +109,6 @@ static void drawArmorBar(int armor) {
     sprintf(txt, "ARM %d", armor);
     drawText(bx + 6, by + 10, txt, GLUT_BITMAP_HELVETICA_12);
 }
-
 static void drawArenaPanel(void) {
     int ai;
     float py = 14.0f;
@@ -171,7 +159,6 @@ static void drawArenaPanel(void) {
         py += bh + 10.0f;
     }
 }
-
 static void drawAmmoPanel(void) {
     int   ammo    = weaponGetAmmo();
     int   maxAmmo = weaponGetMaxAmmo();
@@ -195,13 +182,11 @@ static void drawAmmoPanel(void) {
         else if (ar > 0.25f) glColor3f(0.85f, 0.65f, 0.10f);
         else                 glColor3f(0.90f, 0.15f, 0.10f);
         fillRect(px, py, (panW - 4) * ar, panH * 0.45f);
-        
         glColor4f(0.05f, 0.90f, 0.40f, 0.65f * ready);
         fillRect(px, py + panH * 0.50f, (panW - 4) * ready, panH * 0.12f);
     }
     glColor4f(0.45f, 0.45f, 0.50f, 0.90f);
     strokeRect(px, py, panW, panH);
-    
     glColor3f(0.85f, 0.85f, 0.90f);
     drawText(px + 6, py + 14, wname, GLUT_BITMAP_HELVETICA_12);
     if (isRel) {
@@ -214,7 +199,6 @@ static void drawAmmoPanel(void) {
         drawText(px + 6, py + 30, txt, GLUT_BITMAP_HELVETICA_18);
     }
 }
-
 static void drawWeaponSelector(void) {
     float iW = 62.0f, iH = 24.0f;
     float sX = SCREEN_W / 2.0f - iW - 4.0f;
@@ -240,7 +224,6 @@ static void drawWeaponSelector(void) {
         }
     }
 }
-
 static void drawKillCounter(void) {
     char txt[64];
     int  kills = enemyGetKillCount();
@@ -248,16 +231,13 @@ static void drawKillCounter(void) {
     float px   = 20.0f;
     float py   = 40.0f;
     float bw   = 160.0f, bh = 36.0f;
-    
     glColor4f(0.05f, 0.05f, 0.05f, 0.72f);
     fillRect(px - 2, py - 2, bw + 4, bh + 4);
     glColor4f(0.70f, 0.25f, 0.10f, 0.70f);
     strokeRect(px - 2, py - 2, bw + 4, bh + 4);
-    
     glColor3f(0.90f, 0.75f, 0.20f);
     sprintf(txt, "KILLS: %d", kills);
     drawText(px + 6, py + 14, txt, GLUT_BITMAP_HELVETICA_12);
-    
     if (alive > 0) {
         glColor3f(0.90f, 0.30f, 0.20f);
     } else {
@@ -266,7 +246,6 @@ static void drawKillCounter(void) {
     sprintf(txt, alive > 0 ? "ENEMIES: %d" : "ALL CLEAR!", alive);
     drawText(px + 6, py + 28, txt, GLUT_BITMAP_HELVETICA_12);
 }
-
 static void drawMinimap(Player* player) {
     float mSz = 140.0f;
     float mx  = SCREEN_W - mSz - 14.0f;
@@ -278,7 +257,6 @@ static void drawMinimap(Player* player) {
     float px, py;
     glColor4f(0.0f, 0.0f, 0.0f, 0.55f);
     fillRect(mx - 2, my - 2, mSz + 4, mSz + 4);
-    
     for (y = 0; y < MAP_LOGICAL_H; y++) {
         for (x = 0; x < MAP_LOGICAL_W; x++) {
             int wt = worldMap[y][x];
@@ -291,7 +269,6 @@ static void drawMinimap(Player* player) {
             }
         }
     }
-    
     for (i = 0; i < gNumEnemies; i++) {
         Enemy* e = &gEnemies[i];
         if (!e->active) continue;
@@ -305,7 +282,6 @@ static void drawMinimap(Player* player) {
             glVertex2f(mx + e->x * invScale * cw, my + e->y * invScale * ch);
         glEnd();
     }
-    
     px = mx + player->x * invScale * cw;
     py = my + player->y * invScale * ch;
     glColor3f(0.10f, 0.95f, 0.30f);
@@ -321,18 +297,15 @@ static void drawMinimap(Player* player) {
     glColor4f(0.30f, 0.55f, 0.80f, 0.70f);
     strokeRect(mx - 2, my - 2, mSz + 4, mSz + 4);
 }
-
 static void drawDamageFlash(void) {
     if (gDamageFlash <= 0.0f) return;
     float a = gDamageFlash * 0.45f;
     glColor4f(0.85f, 0.05f, 0.05f, a);
     fillRect(0, 0, SCREEN_W, SCREEN_H);
 }
-
 static void drawGameOver(void) {
     glColor4f(0.0f, 0.0f, 0.0f, 0.78f);
     fillRect(0, 0, SCREEN_W, SCREEN_H);
-    
     {
         const char* msg  = "YOU DIED";
         int tw = textWidth(msg, GLUT_BITMAP_TIMES_ROMAN_24);
@@ -346,7 +319,6 @@ static void drawGameOver(void) {
         drawText((SCREEN_W - tw) / 2.0f, SCREEN_H / 2.0f + 18, sub, GLUT_BITMAP_HELVETICA_18);
     }
 }
-
 static void drawDebugInfo(Player* player) {
     char buf[80];
     glColor4f(0.55f, 0.55f, 0.60f, 0.80f);
@@ -354,7 +326,6 @@ static void drawDebugInfo(Player* player) {
             player->x, player->y, player->dirX, player->dirY);
     drawText(12, 18, buf, GLUT_BITMAP_HELVETICA_12);
 }
-
 static void drawHUD(Player* player) {
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
@@ -367,7 +338,6 @@ static void drawHUD(Player* player) {
     glDisable(GL_LIGHTING);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    
     drawDamageFlash();
     if (player->health <= 0) {
         drawGameOver();

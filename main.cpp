@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
-
 #include "map.h"
 #include "texture.h"
 #include "player.h"
@@ -13,17 +12,14 @@
 #include "enemy.h"
 #include "item.h"
 #include "hud.h"
-
 static Player player;
 static int windowCenterX   = SCREEN_W / 2;
 static int windowCenterY   = SCREEN_H / 2;
 static int mouseWarping    = 0;
 static int mouseButtonHeld = 0;
 static int prevTime        = 0;
-
 static void display(void) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glOrtho(0, SCREEN_W, SCREEN_H, 0, -1, 1);
@@ -31,28 +27,20 @@ static void display(void) {
     glLoadIdentity();
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_LIGHTING);
-    
     renderRaycastView(&player);
-    
     renderProjectiles(&player);
-    
     renderEnemies(&player);
-    
     renderItems(&player);
-    
     renderWeapon3D(&player);
-    
     drawHUD(&player);
     glutSwapBuffers();
 }
-
 static void reshape(int width, int height) {
     if (height == 0) height = 1;
     glViewport(0, 0, width, height);
     windowCenterX = width  / 2;
     windowCenterY = height / 2;
 }
-
 static void keyDown(unsigned char key, int x, int y) {
     (void)x; (void)y;
     switch (key) {
@@ -77,7 +65,6 @@ static void keyUp(unsigned char key, int x, int y) {
         case 'd': case 'D': player.strafeRight  = 0; break;
     }
 }
-
 static void specialKey(int key, int x, int y) {
     (void)x; (void)y;
     if (key == GLUT_KEY_F5) {
@@ -86,7 +73,6 @@ static void specialKey(int key, int x, int y) {
         enemyInitLevel();
     }
 }
-
 static void mouseMotion(int x, int y) {
     int dx, dy;
     if (mouseWarping) { mouseWarping = 0; return; }
@@ -99,7 +85,6 @@ static void mouseMotion(int x, int y) {
         glutWarpPointer(windowCenterX, windowCenterY);
     }
 }
-
 static void mouseButton(int button, int state, int x, int y) {
     (void)x; (void)y;
     if (button == GLUT_LEFT_BUTTON) {
@@ -113,42 +98,35 @@ static void mouseButton(int button, int state, int x, int y) {
     if (button == 3) weaponSwitch((gCurrentWeapon + 1) % NUM_WEAPONS);
     if (button == 4) weaponSwitch((gCurrentWeapon - 1 + NUM_WEAPONS) % NUM_WEAPONS);
 }
-
 static void idle(void) {
     int   currTime = glutGet(GLUT_ELAPSED_TIME);
     float dt       = (float)(currTime - prevTime) / 1000.0f;
     if (dt > 0.05f) dt = 0.05f;
     prevTime = currTime;
-    
     if (mouseButtonHeld && player.health > 0)
         weaponShoot(&player);
-    
     if (player.health > 0) {
         playerMove(&player);
         weaponUpdate(dt);
         enemyUpdate(&player, dt);
         itemUpdate(&player, dt);
     }
-    
     if (gDamageFlash > 0.0f) {
         gDamageFlash -= dt * 3.0f;
         if (gDamageFlash < 0.0f) gDamageFlash = 0.0f;
     }
     glutPostRedisplay();
 }
-
 int main(int argc, char *argv[]) {
     glutInit(&argc, argv);
     glutInitWindowSize(SCREEN_W, SCREEN_H);
     glutInitWindowPosition(100, 50);
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
     glutCreateWindow("DOOM GTI - FPS Shooter");
-    
     playerInit(&player);
     weaponInit();
     itemInit();
     enemyInitLevel();
-    
     glutReshapeFunc(reshape);
     glutDisplayFunc(display);
     glutKeyboardFunc(keyDown);
@@ -158,7 +136,6 @@ int main(int argc, char *argv[]) {
     glutMotionFunc(mouseMotion);
     glutMouseFunc(mouseButton);
     glutIdleFunc(idle);
-    
     glutSetCursor(GLUT_CURSOR_NONE);
     glutWarpPointer(windowCenterX, windowCenterY);
     prevTime = glutGet(GLUT_ELAPSED_TIME);
