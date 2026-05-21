@@ -102,4 +102,81 @@ static void initFloorTexture(void) {
         fprintf(stderr, "[texture] Floor.bmp not found — fallback to procedural\n");
     }
 }
+static BmpTexture gWallTex = {NULL, 0, 0};
+static void initWallTexture(void) {
+    if (!loadBMP("Wall.bmp", &gWallTex)) {
+        fprintf(stderr, "[texture] Wall.bmp not found — fallback to solid color\n");
+    }
+}
+
+static BmpTexture gEnemySpriteTex = {NULL, 0, 0};
+static GLuint     gEnemySpriteGLTex = 0; 
+static void initEnemySpriteTexture(void) {
+    if (!loadBMP("prabowoPixel.bmp", &gEnemySpriteTex)) {
+        fprintf(stderr, "[texture] prabowoPixel.bmp not found\n");
+        return;
+    }
+    
+    glGenTextures(1, &gEnemySpriteGLTex);
+    glBindTexture(GL_TEXTURE_2D, gEnemySpriteGLTex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    {
+        
+        int total = gEnemySpriteTex.width * gEnemySpriteTex.height;
+        unsigned char *rgba = (unsigned char*)malloc(total * 4);
+        int i;
+        for (i = 0; i < total; i++) {
+            unsigned char r = gEnemySpriteTex.pixels[i*3+0];
+            unsigned char g = gEnemySpriteTex.pixels[i*3+1];
+            unsigned char b = gEnemySpriteTex.pixels[i*3+2];
+            rgba[i*4+0] = r;
+            rgba[i*4+1] = g;
+            rgba[i*4+2] = b;
+            
+            rgba[i*4+3] = (r > 230 && g > 230 && b > 230) ? 0 : 255;
+        }
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, gEnemySpriteTex.width,
+                     gEnemySpriteTex.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
+        free(rgba);
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
+    printf("[texture] Enemy sprite uploaded to GPU: %dx%d\n",
+           gEnemySpriteTex.width, gEnemySpriteTex.height);
+}
+
+static void sampleWallBilinear(const BmpTexture *tex, float u, float v,
+                                float *r, float *g, float *b) {
+    float px, py_f, fx, fy;
+    int x0, x1, y0, y1;
+    unsigned char *p00, *p10, *p01, *p11;
+    if (!tex->pixels || tex->width <= 0 || tex->height <= 0) {
+        *r = *g = *b = 0.5f;
+        return;
+    }
+    
+    u = u - (float)((int)u);
+    if (u < 0.0f) u += 1.0f;
+    if (v < 0.0f) v = 0.0f;
+    if (v > 1.0f) v = 1.0f;
+    px   = u * (float)(tex->width  - 1);
+    py_f = v * (float)(tex->height - 1);
+    x0 = (int)px;   x1 = (x0 + 1) % tex->width;
+    y0 = (int)py_f; y1 = y0 + 1;
+    if (y1 >= tex->height) y1 = tex->height - 1;
+    fx = px   - (float)x0;
+    fy = py_f - (float)y0;
+    p00 = &tex->pixels[(y0 * tex->width + x0) * 3];
+    p10 = &tex->pixels[(y0 * tex->width + x1) * 3];
+    p01 = &tex->pixels[(y1 * tex->width + x0) * 3];
+    p11 = &tex->pixels[(y1 * tex->width + x1) * 3];
+    *r = ((p00[0]*(1.0f-fx) + p10[0]*fx)*(1.0f-fy)
+        + (p01[0]*(1.0f-fx) + p11[0]*fx)*fy) / 255.0f;
+    *g = ((p00[1]*(1.0f-fx) + p10[1]*fx)*(1.0f-fy)
+        + (p01[1]*(1.0f-fx) + p11[1]*fx)*fy) / 255.0f;
+    *b = ((p00[2]*(1.0f-fx) + p10[2]*fx)*(1.0f-fy)
+        + (p01[2]*(1.0f-fx) + p11[2]*fx)*fy) / 255.0f;
+}
 #endif 

@@ -70,19 +70,48 @@ Peta berukuran skala besar (world size 120x96) dengan beberapa zona:
 2. **File → Open Project** → pilih file `tubesGame.dev`
 3. Tekan **F9** untuk Compile & Run langsung
 
-### ⚡ Menggunakan Terminal (PowerShell / VS Code)
+---
 
-> Sangat direkomendasikan jika sering mengedit file kode tanpa membuka Dev-C++ terus menerus.
+### ⚡ Menggunakan Terminal (PowerShell / CMD / VS Code)
 
+Sangat direkomendasikan jika Anda ingin kompilasi cepat via terminal tanpa membuka IDE Dev-C++.
+
+#### 📌 Cara 1: Menggunakan `mingw32-make` (Paling Mudah)
+Jika Anda menggunakan **Dev-C++ GTI MOD**, utility `mingw32-make` sudah terinstall secara bawaan di folder instalasi.
+
+**Di PowerShell / CMD:**
 ```powershell
-# Compile & Run menggunakan G++
+# Jalankan perintah ini untuk compile secara otomatis menggunakan Makefile.win
+& "C:\Program Files (x86)\GibsTeam\Dev-C++ GTI MOD\Dev-Cpp\Dev-Cpp\MinGW32\bin\mingw32-make.exe" -f Makefile.win
+
+# Jalankan game
+.\tubesGame.exe
+```
+
+*Jika Anda ingin membersihkan file objek (`.o`) dan hasil build lama sebelum compile ulang:*
+```powershell
+& "C:\Program Files (x86)\GibsTeam\Dev-C++ GTI MOD\Dev-Cpp\Dev-Cpp\MinGW32\bin\mingw32-make.exe" -f Makefile.win clean
+```
+
+---
+
+#### 📌 Cara 2: Menggunakan perintah manual `g++` (Cadangan)
+Jika Anda ingin melakukan kompilasi manual baris demi baris menggunakan compiler G++ bawaan Dev-C++:
+
+**Di PowerShell:**
+```powershell
+# 1. Definisikan path ke compiler dan folder include/lib
 $cpp = "C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/bin/g++.exe"
 $inc = "C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/include"
 $lib = "C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/lib"
 
+# 2. Compile main.cpp menjadi object file main.o
 & $cpp -c main.cpp -o main.o -I"$inc" -O2 -fpermissive
+
+# 3. Link file main.o dengan library OpenGL & FreeGLUT menjadi executable
 & $cpp main.o -o tubesGame.exe -L"$lib" -static-libstdc++ -static-libgcc -mwindows -lglut32 -lglu32 -lopengl32 -lwinmm -lgdi32
 
+# 4. Jalankan game
 .\tubesGame.exe
 ```
 

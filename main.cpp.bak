@@ -9,7 +9,6 @@
 #include "player.h"
 #include "raycaster.h"
 #include "weapon.h"
-#include "Ompreng.h"
 #include "enemy.h"
 #include "item.h"
 #include "hud.h"
@@ -32,7 +31,6 @@ static void display(void) {
     renderProjectiles(&player);
     renderEnemies(&player);
     renderItems(&player);
-    renderOmprengItems(&player);
     renderWeapon3D(&player);
     drawHUD(&player);
     glutSwapBuffers();
@@ -72,7 +70,6 @@ static void specialKey(int key, int x, int y) {
     if (key == GLUT_KEY_F5) {
         playerInit(&player);
         itemInit();
-        omprengInit();
         enemyInitLevel();
     }
 }
@@ -109,11 +106,10 @@ static void idle(void) {
     if (mouseButtonHeld && player.health > 0)
         weaponShoot(&player);
     if (player.health > 0) {
-        playerMove(&player, dt);
+        playerMove(&player);
         weaponUpdate(dt);
         enemyUpdate(&player, dt);
         itemUpdate(&player, dt);
-        omprengUpdate(&player, dt);
     }
     if (gDamageFlash > 0.0f) {
         gDamageFlash -= dt * 3.0f;
@@ -130,7 +126,6 @@ int main(int argc, char *argv[]) {
     playerInit(&player);
     weaponInit();
     itemInit();
-    omprengInit();
     enemyInitLevel();
     glutReshapeFunc(reshape);
     glutDisplayFunc(display);
@@ -146,7 +141,6 @@ int main(int argc, char *argv[]) {
     prevTime = glutGet(GLUT_ELAPSED_TIME);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glEnable(GL_NORMALIZE);
-    // initEnemySpriteTexture();  // DISABLED: prabowoPixel sprite
     printf("=== DOOM GTI - Version 3 ===\n");
     printf("Controls:\n");
     printf("  WASD         - Move\n");

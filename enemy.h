@@ -313,6 +313,10 @@ static void enemyHit(Enemy* e, int damage) {
         e->state     = STATE_DYING;
         e->deathTimer = 0.0f;
         gKillCount++;
+        
+        if (e->arenaId == 0) {
+            omprengSpawn(e->x, e->y);
+        }
     } else {
         if (e->state == STATE_IDLE) e->state = STATE_CHASE;
     }
@@ -561,7 +565,7 @@ static void renderEnemies(Player* player) {
             behindWall = 1;
             { int step = (spriteW > 16) ? spriteW / 6 : 1;
               for (col = sX0; col <= sX1; col += step)
-                  if (col >= 0 && col < SCREEN_W && zBuffer[col] >= tY * 0.90f)
+                  if (col >= 0 && col < SCREEN_W && zBuffer[col] >= tY * 1.02f)
                       { behindWall = 0; break; } }
             if (behindWall) continue;
             shade = 1.0f - tY / 48.0f;
@@ -574,30 +578,42 @@ static void renderEnemies(Player* player) {
             w    = fx1 - fx0;
             h    = fy1 - fy0;
             if (w < 1 || h < 1) continue;
-            if (e->type == ENEMY_IMP) {
-                glColor3f(0.45f*shade, 0.12f*shade, 0.08f*shade);
-                glBegin(GL_QUADS); glVertex2f(fx0,fy0+h*0.28f); glVertex2f(fx1,fy0+h*0.28f); glVertex2f(fx1,fy1); glVertex2f(fx0,fy1); glEnd();
-                glColor3f(0.72f*shade, 0.35f*shade, 0.10f*shade);
-                glBegin(GL_QUADS); glVertex2f(midX-w*0.26f,fy0); glVertex2f(midX+w*0.26f,fy0); glVertex2f(midX+w*0.26f,fy0+h*0.28f); glVertex2f(midX-w*0.26f,fy0+h*0.28f); glEnd();
-                glColor3f(0.95f*shade, 0.85f*shade, 0.0f);
-                glBegin(GL_QUADS); glVertex2f(midX-w*0.20f,fy0+h*0.07f); glVertex2f(midX-w*0.06f,fy0+h*0.07f); glVertex2f(midX-w*0.06f,fy0+h*0.18f); glVertex2f(midX-w*0.20f,fy0+h*0.18f); glEnd();
-                glBegin(GL_QUADS); glVertex2f(midX+w*0.06f,fy0+h*0.07f); glVertex2f(midX+w*0.20f,fy0+h*0.07f); glVertex2f(midX+w*0.20f,fy0+h*0.18f); glVertex2f(midX+w*0.06f,fy0+h*0.18f); glEnd();
-            } else if (e->type == ENEMY_DEMON) {
-                glColor3f(0.35f*shade, 0.08f*shade, 0.30f*shade);
+            
+            if (gEnemySpriteGLTex != 0) {
+                float alpha = 1.0f;
+                
+                if (e->state == STATE_DYING) {
+                    float t = e->deathTimer / DEATH_DURATION;
+                    if (t > 1.0f) t = 1.0f;
+                    alpha = 1.0f - t;
+                }
+                glDisable(GL_DEPTH_TEST);
+                glDisable(GL_LIGHTING);
+                glEnable(GL_COLOR_MATERIAL);
+                glEnable(GL_TEXTURE_2D);
+                glBindTexture(GL_TEXTURE_2D, gEnemySpriteGLTex);
+                glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                glColor4f(1.0f, 1.0f, 1.0f, alpha);
+                glBegin(GL_QUADS);
+                    glTexCoord2f(0.0f, 0.0f); glVertex2f(fx0, fy0);
+                    glTexCoord2f(1.0f, 0.0f); glVertex2f(fx1, fy0);
+                    glTexCoord2f(1.0f, 1.0f); glVertex2f(fx1, fy1);
+                    glTexCoord2f(0.0f, 1.0f); glVertex2f(fx0, fy1);
+                glEnd();
+                glDisable(GL_BLEND);
+                glDisable(GL_TEXTURE_2D);
+                glDisable(GL_COLOR_MATERIAL);
+                glBindTexture(GL_TEXTURE_2D, 0);
+                glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+            } else {
+                
+                glColor3f(0.45f, 0.12f, 0.08f);
                 glBegin(GL_QUADS); glVertex2f(fx0,fy0); glVertex2f(fx1,fy0); glVertex2f(fx1,fy1); glVertex2f(fx0,fy1); glEnd();
-                glColor3f(0.70f*shade, 0.25f*shade, 0.30f*shade);
-                glBegin(GL_QUADS); glVertex2f(midX-w*0.28f,fy0+h*0.08f); glVertex2f(midX+w*0.28f,fy0+h*0.08f); glVertex2f(midX+w*0.28f,fy0+h*0.42f); glVertex2f(midX-w*0.28f,fy0+h*0.42f); glEnd();
-                glColor3f(0.95f*shade, 0.05f*shade, 0.05f*shade);
-                glBegin(GL_QUADS); glVertex2f(midX-w*0.22f,fy0+h*0.12f); glVertex2f(midX-w*0.08f,fy0+h*0.12f); glVertex2f(midX-w*0.08f,fy0+h*0.24f); glVertex2f(midX-w*0.22f,fy0+h*0.24f); glEnd();
-                glBegin(GL_QUADS); glVertex2f(midX+w*0.08f,fy0+h*0.12f); glVertex2f(midX+w*0.22f,fy0+h*0.12f); glVertex2f(midX+w*0.22f,fy0+h*0.24f); glVertex2f(midX+w*0.08f,fy0+h*0.24f); glEnd();
-            } else { 
-                glColor3f(0.50f*shade, 0.55f*shade, 0.62f*shade);
-                glBegin(GL_QUADS); glVertex2f(fx0,fy0); glVertex2f(fx1,fy0); glVertex2f(fx1,fy1); glVertex2f(fx0,fy1); glEnd();
-                glColor3f(0.25f*shade, 0.27f*shade, 0.35f*shade);
-                glBegin(GL_QUADS); glVertex2f(fx0+w*0.12f,fy0+h*0.12f); glVertex2f(fx1-w*0.12f,fy0+h*0.12f); glVertex2f(fx1-w*0.12f,fy1-h*0.12f); glVertex2f(fx0+w*0.12f,fy1-h*0.12f); glEnd();
-                glColor3f(0.20f*shade, 0.85f*shade, 0.90f*shade);
-                glBegin(GL_QUADS); glVertex2f(midX-w*0.10f,(fy0+fy1)*0.5f-h*0.12f); glVertex2f(midX+w*0.10f,(fy0+fy1)*0.5f-h*0.12f); glVertex2f(midX+w*0.10f,(fy0+fy1)*0.5f+h*0.05f); glVertex2f(midX-w*0.10f,(fy0+fy1)*0.5f+h*0.05f); glEnd();
+                glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
             }
+            
             if (e->state != STATE_DYING && e->state != STATE_DEAD && tY < 21.0f) {
                 float hr  = e->hp / e->maxHp;
                 float barY = fy0 - (h > 40 ? h*0.08f : 4.0f);

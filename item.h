@@ -61,7 +61,9 @@ static void itemInit(void) {
     gWaveTimer   = 0.0f;
 }
 static void itemCheckWave(float dt) {
-    int alive = enemyGetAliveCount();
+    int alive;
+    if (gKillCount == 0) return;
+    alive = enemyGetAliveCount();
     if (alive > 0) {
         gWaveTimer = 0.0f;
         return;

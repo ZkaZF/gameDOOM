@@ -4,7 +4,7 @@
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
-#define MOVE_SPEED    0.15f   
+#define MOVE_SPEED    0.17f   
 #define ROT_SPEED     0.03f
 #define MOUSE_SENS    0.003f
 #define MOUSE_SENS_Y  0.30f  
@@ -58,24 +58,25 @@ static void playerPitch(Player* p, int dy) {
     if (p->pitch >  PITCH_MAX) p->pitch =  PITCH_MAX;
     if (p->pitch < -PITCH_MAX) p->pitch = -PITCH_MAX;
 }
-static void playerMove(Player* p) {
+static void playerMove(Player* p, float dt) {
+    float spd = MOVE_SPEED * dt * 60.0f;
     float moveX = 0, moveY = 0;
     float newX, newY;
     if (p->moveForward) {
-        moveX += p->dirX * MOVE_SPEED;
-        moveY += p->dirY * MOVE_SPEED;
+        moveX += p->dirX * spd;
+        moveY += p->dirY * spd;
     }
     if (p->moveBackward) {
-        moveX -= p->dirX * MOVE_SPEED;
-        moveY -= p->dirY * MOVE_SPEED;
+        moveX -= p->dirX * spd;
+        moveY -= p->dirY * spd;
     }
     if (p->strafeLeft) {
-        moveX -= p->planeX * MOVE_SPEED;
-        moveY -= p->planeY * MOVE_SPEED;
+        moveX -= p->planeX * spd;
+        moveY -= p->planeY * spd;
     }
     if (p->strafeRight) {
-        moveX += p->planeX * MOVE_SPEED;
-        moveY += p->planeY * MOVE_SPEED;
+        moveX += p->planeX * spd;
+        moveY += p->planeY * spd;
     }
     newX = p->x + moveX;
     newY = p->y + moveY;

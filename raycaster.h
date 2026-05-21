@@ -5,6 +5,8 @@
 #define SCREEN_W 800
 #define SCREEN_H 600
 #define WALL_HEIGHT_SCALE 3.5f
+
+#define WALL_TEX_TILE_SCALE 3.0f
 static float wallColors[][3] = {
     {0.0f, 0.0f, 0.0f},
     {0.45f, 0.45f, 0.48f}, 
@@ -37,6 +39,7 @@ static void renderRaycastView(Player *player) {
   static int floorTexLoaded = 0;
   if (!floorTexLoaded) {
     initFloorTexture();
+    initWallTexture();
     floorTexLoaded = 1;
   }
   int x;
@@ -138,7 +141,8 @@ static void renderRaycastView(Player *player) {
     }
     glEnd();
   }
-  glBegin(GL_LINES);
+  
+  glBegin(GL_POINTS);
   for (x = 0; x < SCREEN_W; x++) {
     cameraX = 2.0f * x / (float)SCREEN_W - 1.0f;
     rayDirX = player->dirX + player->planeX * cameraX;
@@ -187,25 +191,44 @@ static void renderRaycastView(Player *player) {
     drawEnd = lineHeight / 2 + SCREEN_H / 2 + pitchInt;
     if (drawEnd >= SCREEN_H)
       drawEnd = SCREEN_H - 1;
-    wallType = getMap(mapX, mapY);
-    if (wallType < 0 || wallType >= numWallColors)
-      wallType = 1;
-    r = wallColors[wallType][0];
-    g = wallColors[wallType][1];
-    b = wallColors[wallType][2];
-    if (side == 1) {
-      r *= 0.7f;
-      g *= 0.7f;
-      b *= 0.7f;
-    }
+    
+    float wallHitPos;
+    if (side == 0)
+      wallHitPos = player->y + perpWallDist * rayDirY;
+    else
+      wallHitPos = player->x + perpWallDist * rayDirX;
+    float wallXscaled = wallHitPos / WALL_TEX_TILE_SCALE;
+    float u = wallXscaled - (float)((int)wallXscaled); 
+    if (u < 0.0f) u += 1.0f;
+    
+    if ((side == 0 && rayDirX > 0) || (side == 1 && rayDirY < 0))
+      u = 1.0f - u;
     shade = 1.0f - (perpWallDist / 48.0f);
-    if (shade < 0.15f)
-      shade = 0.15f;
-    if (shade > 1.0f)
-      shade = 1.0f;
-    glColor3f(r * shade, g * shade, b * shade);
-    glVertex2f((float)x, (float)drawStart);
-    glVertex2f((float)x, (float)drawEnd);
+    if (shade < 0.15f) shade = 0.15f;
+    if (shade > 1.0f)  shade = 1.0f;
+    float sideDim = (side == 1) ? 0.7f : 1.0f;
+    
+    int drawStartFull = -lineHeight / 2 + SCREEN_H / 2 + pitchInt;
+    
+    int py;
+    for (py = drawStart; py <= drawEnd; py++) {
+      if (gWallTex.pixels && gWallTex.width > 0) {
+        
+        float v = (float)(py - drawStartFull) / (float)lineHeight;
+        if (v < 0.0f) v = 0.0f;
+        if (v > 1.0f) v = 1.0f;
+        sampleWallBilinear(&gWallTex, u, v, &r, &g, &b);
+      } else {
+        
+        wallType = getMap(mapX, mapY);
+        if (wallType < 0 || wallType >= numWallColors) wallType = 1;
+        r = wallColors[wallType][0];
+        g = wallColors[wallType][1];
+        b = wallColors[wallType][2];
+      }
+      glColor3f(r * shade * sideDim, g * shade * sideDim, b * shade * sideDim);
+      glVertex2f((float)x, (float)py);
+    }
   }
   glEnd();
 }

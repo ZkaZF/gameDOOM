@@ -1,7 +1,6 @@
-# Ignore documentation and planning
 DOCS.md
 planning.md
 
-# Ignore compilation artifacts
+
 *.o
 *.exe
