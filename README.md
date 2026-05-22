@@ -175,6 +175,23 @@ gameDOOM/
 
 ---
 
+## 🚀 Cara Build dan Menjalankan Game (menggunakan PowerShell)
+
+Karena project ini menggunakan konfigurasi spesifik dari Dev-C++ GTI MOD, gunakan syntax berikut di terminal **PowerShell** kamu:
+
+**1. Syntax untuk Compile (Build):**
+```powershell
+& "C:\Program Files (x86)\GibsTeam\Dev-C++ GTI MOD\Dev-Cpp\Dev-Cpp\MinGW32\bin\mingw32-make.exe" -f Makefile.win
+```
+*(Catatan: Jika ingin clean build, tambahkan kata `clean` di akhir sebelum menjalankan yang di atas, contoh: `... -f Makefile.win clean`)*
+
+**2. Syntax untuk Menjalankan Game (Run):**
+```powershell
+.\tubesGame.exe
+```
+
+---
+
 ## 🌿 Panduan Kolaborasi Git (4 Orang)
 
 ### Struktur Branch

@@ -1,11 +1,11 @@
-# Project: Project1
-# Makefile created by Dev-C++ 5.7.1
+# Project: tubesGame
+# Makefile - Refactored: .h deklarasi + .cpp implementasi
 
 CPP      = "C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/bin/g++.exe"
 CC       = "C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/bin/gcc.exe"
 WINDRES  = windres.exe
-OBJ      = main.o
-LINKOBJ  = main.o
+OBJ      = main.o map.o texture.o player.o raycaster.o weapon.o Ompreng.o enemy.o item.o hud.o
+LINKOBJ  = main.o map.o texture.o player.o raycaster.o weapon.o Ompreng.o enemy.o item.o hud.o
 LIBS     = -L"C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/lib" -L"C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/mingw32/lib" -static-libstdc++ -static-libgcc -mwindows -lglut32 -lglu32 -lopengl32 -lwinmm -lgdi32 -g3
 INCS     = -I"C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/include" -I"C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/mingw32/include" -I"C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/lib/gcc/mingw32/4.8.1/include"
 CXXINCS  = -I"C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/include" -I"C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/mingw32/include" -I"C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/lib/gcc/mingw32/4.8.1/include" -I"C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/lib/gcc/mingw32/4.8.1/include/c++"
@@ -26,3 +26,30 @@ $(BIN): $(OBJ)
 
 main.o: main.cpp
 	$(CPP) -c main.cpp -o main.o $(CXXFLAGS)
+
+map.o: map.cpp map.h
+	$(CPP) -c map.cpp -o map.o $(CXXFLAGS)
+
+texture.o: texture.cpp texture.h
+	$(CPP) -c texture.cpp -o texture.o $(CXXFLAGS)
+
+player.o: player.cpp player.h map.h
+	$(CPP) -c player.cpp -o player.o $(CXXFLAGS)
+
+raycaster.o: raycaster.cpp raycaster.h texture.h map.h player.h
+	$(CPP) -c raycaster.cpp -o raycaster.o $(CXXFLAGS)
+
+weapon.o: weapon.cpp weapon.h player.h map.h raycaster.h
+	$(CPP) -c weapon.cpp -o weapon.o $(CXXFLAGS)
+
+Ompreng.o: Ompreng.cpp Ompreng.h player.h raycaster.h weapon.h
+	$(CPP) -c Ompreng.cpp -o Ompreng.o $(CXXFLAGS)
+
+enemy.o: enemy.cpp enemy.h Ompreng.h weapon.h raycaster.h map.h texture.h player.h
+	$(CPP) -c enemy.cpp -o enemy.o $(CXXFLAGS)
+
+item.o: item.cpp item.h enemy.h weapon.h raycaster.h map.h player.h
+	$(CPP) -c item.cpp -o item.o $(CXXFLAGS)
+
+hud.o: hud.cpp hud.h enemy.h weapon.h raycaster.h map.h player.h
+	$(CPP) -c hud.cpp -o hud.o $(CXXFLAGS)
