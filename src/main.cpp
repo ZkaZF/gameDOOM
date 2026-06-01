@@ -1,5 +1,6 @@
 
 #include <GL/glut.h>
+#include <windows.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -10,9 +11,13 @@
 #include "raycaster.h"
 #include "weapon.h"
 #include "Ompreng.h"
+#include "FoodItem.h"
+#include "audio.h"
 #include "enemy.h"
 #include "item.h"
 #include "hud.h"
+int gGameWon = 0;
+int gShowControls = 1;
 static Player player;
 static int windowCenterX   = SCREEN_W / 2;
 static int windowCenterY   = SCREEN_H / 2;
@@ -33,6 +38,7 @@ static void display(void) {
     renderEnemies(&player);
     renderItems(&player);
     renderOmprengItems(&player);
+    renderFoodItems(&player);
     renderWeapon3D(&player);
     drawHUD(&player);
     glutSwapBuffers();
@@ -45,8 +51,9 @@ static void reshape(int width, int height) {
 }
 static void keyDown(unsigned char key, int x, int y) {
     (void)x; (void)y;
+    if (key == 27) { exit(0); }
+    if (gShowControls) { gShowControls = 0; return; }
     switch (key) {
-        case 27: exit(0); break;
         case 'w': case 'W': player.moveForward  = 1; break;
         case 's': case 'S': player.moveBackward = 1; break;
         case 'a': case 'A': player.strafeLeft   = 1; break;
@@ -54,7 +61,12 @@ static void keyDown(unsigned char key, int x, int y) {
         case '1': weaponSwitch(WEAPON_PISTOL);  break;
         case '2': weaponSwitch(WEAPON_SHOTGUN); break;
         case '3': weaponSwitch(WEAPON_M416);    break;
-        case ' ': weaponShoot(&player); break;
+        case ' ':
+            /* Jump — only if on ground */
+            if (player.jumpZ <= 0.0f && player.jumpVel <= 0.0f) {
+                player.jumpVel = JUMP_VEL;
+            }
+            break;
         case 'r': case 'R': weaponReload(); break;
     }
 }
@@ -70,9 +82,14 @@ static void keyUp(unsigned char key, int x, int y) {
 static void specialKey(int key, int x, int y) {
     (void)x; (void)y;
     if (key == GLUT_KEY_F5) {
+        gGameWon = 0;
+        gShowControls = 1;
+        audioStop();
         playerInit(&player);
         itemInit();
         omprengInit();
+        foodInit();
+        audioInit();
         enemyInitLevel();
     }
 }
@@ -92,6 +109,7 @@ static void mouseButton(int button, int state, int x, int y) {
     (void)x; (void)y;
     if (button == GLUT_LEFT_BUTTON) {
         if (state == GLUT_DOWN) {
+            if (gShowControls) { gShowControls = 0; return; }
             mouseButtonHeld = 1;
             weaponShoot(&player);
         } else {
@@ -106,14 +124,21 @@ static void idle(void) {
     float dt       = (float)(currTime - prevTime) / 1000.0f;
     if (dt > 0.05f) dt = 0.05f;
     prevTime = currTime;
-    if (mouseButtonHeld && player.health > 0)
+    if (mouseButtonHeld && player.health > 0 && !gShowControls)
         weaponShoot(&player);
-    if (player.health > 0) {
+    if (player.health > 0 && !gShowControls) {
+        /* Sprint: check Shift key */
+        player.sprinting = (GetAsyncKeyState(VK_SHIFT) & 0x8000) ? 1 : 0;
         playerMove(&player, dt);
         weaponUpdate(dt);
         enemyUpdate(&player, dt);
         itemUpdate(&player, dt);
         omprengUpdate(&player, dt);
+        foodUpdate(&player, dt);
+        /* Win condition: all items collected + boss defeated */
+        if (!gGameWon && foodAllCollected() && gArenas[2].completed) {
+            gGameWon = 1;
+        }
     }
     if (gDamageFlash > 0.0f) {
         gDamageFlash -= dt * 3.0f;
@@ -127,11 +152,16 @@ int main(int argc, char *argv[]) {
     glutInitWindowPosition(100, 50);
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
     glutCreateWindow("DOOM GTI - FPS Shooter");
+    glutFullScreen();
     playerInit(&player);
     weaponInit();
     itemInit();
     omprengInit();
+    foodInit();
+    audioInit();
     enemyInitLevel();
+    initGoblinSpriteTexture();
+    initBossSpriteTexture();
     glutReshapeFunc(reshape);
     glutDisplayFunc(display);
     glutKeyboardFunc(keyDown);
@@ -146,7 +176,6 @@ int main(int argc, char *argv[]) {
     prevTime = glutGet(GLUT_ELAPSED_TIME);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glEnable(GL_NORMALIZE);
-    // initEnemySpriteTexture();  // DISABLED: prabowoPixel sprite
     printf("=== DOOM GTI - Version 3 ===\n");
     printf("Controls:\n");
     printf("  WASD         - Move\n");

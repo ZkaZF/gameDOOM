@@ -10,7 +10,8 @@
 #define ITEM_HEALTH    0
 #define ITEM_AMMO      1
 #define ITEM_ARMOR     2
-#define NUM_ITEM_TYPES 3
+#define ITEM_WEAPON_CRATE 3
+#define NUM_ITEM_TYPES 4
 #define MAX_ITEMS      32
 #define ITEM_RADIUS    1.65f
 #define ITEM_BOB_SPEED 2.4f
@@ -24,6 +25,7 @@ typedef struct {
     float bobPhase;
     float lifetime;
     int   active;
+    int   weaponType;  /* only for ITEM_WEAPON_CRATE */
 } Item;
 
 extern Item  gItems[MAX_ITEMS];

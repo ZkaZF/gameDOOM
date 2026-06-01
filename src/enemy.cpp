@@ -1,6 +1,8 @@
 
 #include "enemy.h"
 #include "Ompreng.h"
+#include "FoodItem.h"
+#include "audio.h"
 #include "weapon.h"
 #include "raycaster.h"
 #include "map.h"
@@ -13,14 +15,17 @@
 Enemy    gEnemies[MAX_ENEMIES];
 int      gNumEnemies = 0;
 int      gKillCount  = 0;
-ArenaRoom gArenas[2];
+ArenaRoom gArenas[3];
 float    gDamageFlash = 0.0f;
 
-static int gWaveTop[5][3] = {
-    {3, 0, 0}, {2, 0, 1}, {2, 0, 2}, {0, 1, 2}, {3, 1, 1},
+static int gWaveTop[3][3] = {
+    {3, 0, 0}, {2, 0, 1}, {0, 1, 2},
 };
-static int gWaveBot[5][3] = {
-    {2, 0, 1}, {3, 0, 1}, {2, 1, 0}, {0, 1, 3}, {2, 2, 1},
+static int gWaveBot[3][3] = {
+    {2, 0, 1}, {3, 0, 1}, {2, 1, 0},
+};
+static int gWaveBoss[1][3] = {
+    {0, 1, 0},   /* 1 wave: 1 Boss (reuse ENEMY_DEMON slot) */
 };
 
 void enemySpawn(int type, float x, float y) {
@@ -50,6 +55,18 @@ void enemySpawnArena(int type, float x, float y, int arenaId) {
     gEnemies[slot].active = 1; gEnemies[slot].arenaId = arenaId;
     gEnemies[slot].state  = STATE_CHASE;
     gEnemies[slot].x = x; gEnemies[slot].y = y;
+    /* Set sprite type based on arena */
+    gEnemies[slot].spriteType = (arenaId == 2) ? 1 : 0;
+    /* Boss room (arenaId==2): override with boss stats */
+    if (arenaId == 2) {
+        gEnemies[slot].type        = ENEMY_DEMON;
+        gEnemies[slot].hp          = gEnemies[slot].maxHp = 500.0f;
+        gEnemies[slot].speed       = 0.035f;
+        gEnemies[slot].damage      = 50.0f;
+        gEnemies[slot].atkRange    = 3.0f;
+        gEnemies[slot].atkCooldown = 1.5f;
+        return;
+    }
     switch (type) {
         case ENEMY_IMP:     gEnemies[slot].type = ENEMY_IMP;     gEnemies[slot].hp = gEnemies[slot].maxHp = 60.0f;  gEnemies[slot].speed = 0.048f; gEnemies[slot].damage = 10.0f; gEnemies[slot].atkRange = 2.40f; gEnemies[slot].atkCooldown = 1.0f;  break;
         case ENEMY_DEMON:   gEnemies[slot].type = ENEMY_DEMON;   gEnemies[slot].hp = gEnemies[slot].maxHp = 180.0f; gEnemies[slot].speed = 0.027f; gEnemies[slot].damage = 35.0f; gEnemies[slot].atkRange = 2.70f; gEnemies[slot].atkCooldown = 1.8f;  break;
@@ -72,14 +89,17 @@ static void arenaUnlockDoor(ArenaRoom* a) {
 static void arenaSpawnWave(ArenaRoom* a) {
     int w = a->currentWave, i, si;
     int imp, dem, spc;
-    int (*waveTable)[3] = (a->arenaId == 0) ? gWaveTop : gWaveBot;
-    if (w < 0 || w >= ARENA_TOTAL_WAVES) return;
+    int (*waveTable)[3];
+    if (a->arenaId == 0) waveTable = gWaveTop;
+    else if (a->arenaId == 1) waveTable = gWaveBot;
+    else waveTable = gWaveBoss;
+    if (w < 0 || w >= a->maxWaves) return;
     imp = waveTable[w][0]; dem = waveTable[w][1]; spc = waveTable[w][2];
     si = 0;
     for (i = 0; i < imp; i++) { int sp = si % a->numSpawns; enemySpawnArena(ENEMY_IMP,     a->spawnX[sp], a->spawnY[sp], a->arenaId); si++; }
     for (i = 0; i < dem; i++) { int sp = si % a->numSpawns; enemySpawnArena(ENEMY_DEMON,   a->spawnX[sp], a->spawnY[sp], a->arenaId); si++; }
     for (i = 0; i < spc; i++) { int sp = si % a->numSpawns; enemySpawnArena(ENEMY_SPECTRE, a->spawnX[sp], a->spawnY[sp], a->arenaId); si++; }
-    sprintf(a->statusMsg, "WAVE %d / %d", w + 1, ARENA_TOTAL_WAVES);
+    sprintf(a->statusMsg, "WAVE %d / %d", w + 1, a->maxWaves);
     a->waveJustSpawned = 1;
 }
 
@@ -94,9 +114,11 @@ static int arenaAliveCount(int arenaId) {
 
 static void arenaInit(void) {
     int i;
+    /* --- Arena 0: Ruangan Atas (Top) --- */
     ArenaRoom* t = &gArenas[0];
     memset(t, 0, sizeof(ArenaRoom));
     t->arenaId = 0; t->state = ARENA_INACTIVE; t->currentWave = 0;
+    t->maxWaves = ARENA_TOTAL_WAVES;
     t->minX = 27.0f; t->maxX = 66.0f; t->minY = 6.0f; t->maxY = 45.0f;
     t->numDoorTiles = 8;
     for (i = 0; i < 4; i++) {
@@ -110,9 +132,11 @@ static void arenaInit(void) {
     t->spawnX[3] = 60.0f; t->spawnY[3] = 37.5f;
     t->spawnX[4] = 46.5f; t->spawnY[4] = 25.5f;
     sprintf(t->statusMsg, "");
+    /* --- Arena 1: Ruangan Bawah (Bottom) --- */
     ArenaRoom* b = &gArenas[1];
     memset(b, 0, sizeof(ArenaRoom));
     b->arenaId = 1; b->state = ARENA_INACTIVE; b->currentWave = 0;
+    b->maxWaves = ARENA_TOTAL_WAVES;
     b->minX = 27.0f; b->maxX = 66.0f; b->minY = 96.0f; b->maxY = 135.0f;
     b->numDoorTiles = 6;
     for (i = 0; i < 3; i++) {
@@ -126,19 +150,42 @@ static void arenaInit(void) {
     b->spawnX[3] = 60.0f; b->spawnY[3] = 127.5f;
     b->spawnX[4] = 46.5f; b->spawnY[4] = 114.0f;
     sprintf(b->statusMsg, "");
+    /* --- Arena 2: Ruangan Kanan (Boss Room) --- */
+    ArenaRoom* r = &gArenas[2];
+    memset(r, 0, sizeof(ArenaRoom));
+    r->arenaId = 2; r->state = ARENA_INACTIVE; r->currentWave = 0;
+    r->maxWaves = ARENA_BOSS_WAVES;   /* 1 wave saja */
+    /* Ruangan kanan: logical cols 23-38, rows 16-35 -> world coords * MAP_SCALE(3) */
+    r->minX = 72.0f; r->maxX = 114.0f; r->minY = 51.0f; r->maxY = 105.0f;
+    /* Door tiles: lorong dari hub ke kanan (logical col 23, rows 27-29) */
+    r->numDoorTiles = 6;
+    for (i = 0; i < 3; i++) {
+        r->doorTiles[i*2][0]   = 23; r->doorTiles[i*2][1]   = 27 + i;
+        r->doorTiles[i*2+1][0] = 24; r->doorTiles[i*2+1][1] = 27 + i;
+    }
+    r->numSpawns = 2;
+    r->spawnX[0] = 87.0f; r->spawnY[0] = 66.0f;   /* tengah ruangan kanan */
+    r->spawnX[1] = 99.0f; r->spawnY[1] = 87.0f;
+    sprintf(r->statusMsg, "");
 }
 
 static void arenaUpdate(Player* player, float dt) {
     int ai;
-    for (ai = 0; ai < 2; ai++) {
+    for (ai = 0; ai < 3; ai++) {
         ArenaRoom* a = &gArenas[ai];
+        /* Safety: once completed, never reactivate */
+        if (a->completed && a->state != ARENA_COMPLETE) {
+            a->state = ARENA_COMPLETE;
+            a->statusTimer = 0.0f;
+            sprintf(a->statusMsg, "");
+        }
         switch (a->state) {
             case ARENA_INACTIVE:
-                if (a->completed) break;
                 if (player->x >= a->minX && player->x <= a->maxX &&
                     player->y >= a->minY && player->y <= a->maxY) {
                     a->state = ARENA_ACTIVE; a->currentWave = 0;
                     arenaLockDoor(a); arenaSpawnWave(a);
+                    audioPlayArena(ai);
                     printf("[Arena %d] Player masuk\n", ai);
                 }
                 break;
@@ -147,16 +194,18 @@ static void arenaUpdate(Player* player, float dt) {
                 if (a->waveJustSpawned) { a->waveJustSpawned = 0; break; }
                 alive = arenaAliveCount(ai);
                 if (alive == 0) {
-                    if (a->currentWave >= ARENA_TOTAL_WAVES - 1) {
+                    if (a->currentWave >= a->maxWaves - 1) {
                         a->state = ARENA_COMPLETE; a->completed = 1;
                         arenaUnlockDoor(a);
+                        audioStop();
                         sprintf(a->statusMsg, "ARENA CLEAR!"); a->statusTimer = 4.0f;
+                        printf("[Arena %d] COMPLETED\n", ai);
                     } else {
                         a->state = ARENA_COOLDOWN; a->cooldownTimer = ARENA_COOLDOWN_TIME;
                         sprintf(a->statusMsg, "WAVE %d CLEAR!", a->currentWave + 1);
                     }
                 } else {
-                    sprintf(a->statusMsg, "WAVE %d / %d  [ %d left ]", a->currentWave+1, ARENA_TOTAL_WAVES, alive);
+                    sprintf(a->statusMsg, "WAVE %d / %d  [ %d left ]", a->currentWave+1, a->maxWaves, alive);
                 }
                 break;
             }
@@ -172,6 +221,7 @@ static void arenaUpdate(Player* player, float dt) {
                     a->statusTimer -= dt;
                     if (a->statusTimer <= 0.0f) sprintf(a->statusMsg, "");
                 }
+                /* Stay in ARENA_COMPLETE forever — never go back to INACTIVE */
                 break;
         }
     }
@@ -182,6 +232,7 @@ void enemyInitLevel(void) {
     gNumEnemies = 0; gKillCount = 0; gDamageFlash = 0.0f;
     arenaUnlockDoor(&gArenas[0]);
     arenaUnlockDoor(&gArenas[1]);
+    arenaUnlockDoor(&gArenas[2]);
     arenaInit();
 }
 
@@ -191,7 +242,18 @@ static void enemyHit(Enemy* e, int damage) {
     if (e->hp <= 0.0f) {
         e->hp = 0.0f; e->state = STATE_DYING; e->deathTimer = 0.0f;
         gKillCount++;
-        if (e->arenaId == 0) omprengSpawn(e->x, e->y);
+        /* Drop items based on arena */
+        if (e->arenaId == 0) {
+            /* Arena Atas: susu kotak / nasi putih */
+            foodSpawn(rand() % 2 == 0 ? FOOD_SUSU_KOTAK : FOOD_NASI_PUTIH, e->x, e->y);
+        } else if (e->arenaId == 1) {
+            /* Arena Bawah: ayam goreng / telur ceplok / nasi putih */
+            int types[] = {FOOD_AYAM_GORENG, FOOD_TELUR_CEPLOK, FOOD_NASI_PUTIH};
+            foodSpawn(types[rand() % 3], e->x, e->y);
+        } else if (e->arenaId == 2) {
+            /* Boss Room: Ompreng only */
+            omprengSpawn(e->x, e->y);
+        }
     } else {
         if (e->state == STATE_IDLE) e->state = STATE_CHASE;
     }
@@ -326,7 +388,6 @@ static void renderSpectreModel(float death) {
     }
     glDisable(GL_BLEND); glPopMatrix();
 }
-
 void renderEnemies(Player* player) {
     int   sortIdx[MAX_ENEMIES];
     float sortDist[MAX_ENEMIES];
@@ -356,7 +417,7 @@ void renderEnemies(Player* player) {
     }
     {
         int k;
-        int pitchInt = (int)player->pitch;
+        int pitchInt = (int)(player->pitch + player->jumpZ * 120.0f);
         int horizY   = SCREEN_H / 2 + pitchInt;
         for (k = 0; k < n; k++) {
             Enemy* e = &gEnemies[sortIdx[k]];
@@ -368,7 +429,11 @@ void renderEnemies(Player* player) {
             tY = (player->planeY * dx - player->planeX * dy) / det;
             if (tY <= 0.1f) continue;
             screenX = (int)((float)(SCREEN_W / 2) * (1.0f + tX / tY));
-            sScale = (e->type == ENEMY_DEMON) ? 0.90f : (e->type == ENEMY_SPECTRE) ? 0.70f : 0.80f;
+            /* Boss (spriteType==1) lebih besar dari Goblin biasa */
+            if (e->spriteType == 1)
+                sScale = 1.4f;
+            else
+                sScale = (e->type == ENEMY_DEMON) ? 0.90f : (e->type == ENEMY_SPECTRE) ? 0.70f : 0.80f;
             if (e->state == STATE_DYING) {
                 float t2 = e->deathTimer / DEATH_DURATION;
                 if (t2 > 1.0f) t2 = 1.0f;
@@ -396,30 +461,38 @@ void renderEnemies(Player* player) {
             midX = (fx0 + fx1) * 0.5f;
             w = fx1 - fx0; h = fy1 - fy0;
             if (w < 1 || h < 1) continue;
-            if (gEnemySpriteGLTex != 0) {
-                float alpha = 1.0f;
-                if (e->state == STATE_DYING) {
-                    float t2 = e->deathTimer / DEATH_DURATION;
-                    if (t2 > 1.0f) t2 = 1.0f;
-                    alpha = 1.0f - t2;
+            {
+                GLuint chosenTex = 0;
+                if (e->spriteType == 1 && gBossSpriteGLTex != 0)
+                    chosenTex = gBossSpriteGLTex;
+                else if (e->spriteType == 0 && gGoblinSpriteGLTex != 0)
+                    chosenTex = gGoblinSpriteGLTex;
+                if (chosenTex != 0) {
+                    float alpha = 1.0f;
+                    if (e->state == STATE_DYING) {
+                        float t2 = e->deathTimer / DEATH_DURATION;
+                        if (t2 > 1.0f) t2 = 1.0f;
+                        alpha = 1.0f - t2;
+                    }
+                    glDisable(GL_DEPTH_TEST); glDisable(GL_LIGHTING); glEnable(GL_COLOR_MATERIAL);
+                    glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, chosenTex);
+                    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+                    glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                    glColor4f(1.0f, 1.0f, 1.0f, alpha);
+                    glBegin(GL_QUADS);
+                        glTexCoord2f(0.0f, 0.0f); glVertex2f(fx0, fy0);
+                        glTexCoord2f(1.0f, 0.0f); glVertex2f(fx1, fy0);
+                        glTexCoord2f(1.0f, 1.0f); glVertex2f(fx1, fy1);
+                        glTexCoord2f(0.0f, 1.0f); glVertex2f(fx0, fy1);
+                    glEnd();
+                    glDisable(GL_BLEND); glDisable(GL_TEXTURE_2D); glDisable(GL_COLOR_MATERIAL);
+                    glBindTexture(GL_TEXTURE_2D, 0); glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+                } else {
+                    /* Fallback: flat color rectangle */
+                    glColor3f(shade * 0.45f, shade * 0.12f, shade * 0.08f);
+                    glBegin(GL_QUADS); glVertex2f(fx0,fy0); glVertex2f(fx1,fy0); glVertex2f(fx1,fy1); glVertex2f(fx0,fy1); glEnd();
+                    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
                 }
-                glDisable(GL_DEPTH_TEST); glDisable(GL_LIGHTING); glEnable(GL_COLOR_MATERIAL);
-                glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, gEnemySpriteGLTex);
-                glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-                glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                glColor4f(1.0f, 1.0f, 1.0f, alpha);
-                glBegin(GL_QUADS);
-                    glTexCoord2f(0.0f, 0.0f); glVertex2f(fx0, fy0);
-                    glTexCoord2f(1.0f, 0.0f); glVertex2f(fx1, fy0);
-                    glTexCoord2f(1.0f, 1.0f); glVertex2f(fx1, fy1);
-                    glTexCoord2f(0.0f, 1.0f); glVertex2f(fx0, fy1);
-                glEnd();
-                glDisable(GL_BLEND); glDisable(GL_TEXTURE_2D); glDisable(GL_COLOR_MATERIAL);
-                glBindTexture(GL_TEXTURE_2D, 0); glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-            } else {
-                glColor3f(0.45f, 0.12f, 0.08f);
-                glBegin(GL_QUADS); glVertex2f(fx0,fy0); glVertex2f(fx1,fy0); glVertex2f(fx1,fy1); glVertex2f(fx0,fy1); glEnd();
-                glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
             }
             if (e->state != STATE_DYING && e->state != STATE_DEAD && tY < 21.0f) {
                 float hr   = e->hp / e->maxHp;

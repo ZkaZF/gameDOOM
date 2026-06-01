@@ -105,13 +105,13 @@ $cpp = "C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/
 $inc = "C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/include"
 $lib = "C:/Program Files (x86)/GibsTeam/Dev-C++ GTI MOD/Dev-Cpp/Dev-Cpp/MinGW32/lib"
 
-# 2. Compile main.cpp menjadi object file main.o
-& $cpp -c main.cpp -o main.o -I"$inc" -O2 -fpermissive
+# 2. Compile semua file dari folder src/ menjadi object file (.o)
+& $cpp -c src/*.cpp -I"$inc" -I"src" -O2 -fpermissive
 
-# 3. Link file main.o dengan library OpenGL & FreeGLUT menjadi executable
-& $cpp main.o -o tubesGame.exe -L"$lib" -static-libstdc++ -static-libgcc -mwindows -lglut32 -lglu32 -lopengl32 -lwinmm -lgdi32
+# 3. Link semua object file dengan library OpenGL & FreeGLUT menjadi executable
+& $cpp *.o -o tubesGame.exe -L"$lib" -static-libstdc++ -static-libgcc -mwindows -lglut32 -lglu32 -lopengl32 -lwinmm -lgdi32
 
-# 4. Jalankan game
+# 4. Jalankan game (pastikan terminal berada di root folder agar folder assets terbaca)
 .\tubesGame.exe
 ```
 
@@ -187,6 +187,7 @@ Karena project ini menggunakan konfigurasi spesifik dari Dev-C++ GTI MOD, gunaka
 
 **2. Syntax untuk Menjalankan Game (Run):**
 ```powershell
+# Pastikan terminal berada di root folder (gameDOOM/) agar aset di folder assets/ bisa terbaca
 .\tubesGame.exe
 ```
 

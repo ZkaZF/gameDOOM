@@ -45,25 +45,42 @@ void renderRaycastView(Player *player) {
     int lineHeight, drawStart, drawEnd;
     float r, g, b, shade;
     int wallType;
-    int pitchInt = (int)player->pitch;
+    int pitchInt = (int)(player->pitch + player->jumpZ * 120.0f);
     int horizY = SCREEN_H / 2 + pitchInt;
     int ceilBot = (horizY < 0) ? 0 : (horizY > SCREEN_H ? SCREEN_H : horizY);
     if (ceilBot > 0) {
-        glColor3f(0.82f, 0.82f, 0.80f);
+        /* Horror fog gradient: soft misty white at top → dark near horizon */
+        int numStrips = 8;
+        int stripH = ceilBot / numStrips;
+        if (stripH < 1) stripH = 1;
+        int sy;
+        for (sy = 0; sy < ceilBot; sy += stripH) {
+            int syEnd = sy + stripH;
+            if (syEnd > ceilBot) syEnd = ceilBot;
+            /* t=0 at top of screen, t=1 at horizon */
+            float t0 = (float)sy / (float)ceilBot;
+            float t1 = (float)syEnd / (float)ceilBot;
+            /* Fog color: top (0.52, 0.50, 0.48) → horizon (0.08, 0.07, 0.07) */
+            float r0 = 0.52f * (1.0f - t0) + 0.08f * t0;
+            float g0 = 0.50f * (1.0f - t0) + 0.07f * t0;
+            float b0 = 0.48f * (1.0f - t0) + 0.07f * t0;
+            float r1 = 0.52f * (1.0f - t1) + 0.08f * t1;
+            float g1 = 0.50f * (1.0f - t1) + 0.07f * t1;
+            float b1 = 0.48f * (1.0f - t1) + 0.07f * t1;
+            glBegin(GL_QUADS);
+            glColor3f(r0, g0, b0);
+            glVertex2f(0, (float)sy); glVertex2f(SCREEN_W, (float)sy);
+            glColor3f(r1, g1, b1);
+            glVertex2f(SCREEN_W, (float)syEnd); glVertex2f(0, (float)syEnd);
+            glEnd();
+        }
+    }
+    /* Dark base quad for floor — prevents bright gaps between floor pixels */
+    if (ceilBot < SCREEN_H) {
+        glColor3f(0.04f, 0.03f, 0.03f);
         glBegin(GL_QUADS);
-        glVertex2f(0, 0); glVertex2f(SCREEN_W, 0);
-        glVertex2f(SCREEN_W, (float)ceilBot); glVertex2f(0, (float)ceilBot);
-        glEnd();
-        int cornice = (ceilBot > 8) ? 8 : ceilBot;
-        glColor3f(0.18f, 0.16f, 0.14f);
-        glBegin(GL_QUADS);
-        glVertex2f(0, (float)(ceilBot - cornice)); glVertex2f(SCREEN_W, (float)(ceilBot - cornice));
-        glVertex2f(SCREEN_W, (float)ceilBot);      glVertex2f(0, (float)ceilBot);
-        glEnd();
-        glColor3f(0.55f, 0.52f, 0.48f);
-        glBegin(GL_QUADS);
-        glVertex2f(0, (float)(ceilBot - cornice));     glVertex2f(SCREEN_W, (float)(ceilBot - cornice));
-        glVertex2f(SCREEN_W, (float)(ceilBot - cornice + 2)); glVertex2f(0, (float)(ceilBot - cornice + 2));
+        glVertex2f(0, (float)ceilBot);   glVertex2f(SCREEN_W, (float)ceilBot);
+        glVertex2f(SCREEN_W, SCREEN_H);  glVertex2f(0, SCREEN_H);
         glEnd();
     }
     if (ceilBot < SCREEN_H) {
@@ -88,7 +105,7 @@ void renderRaycastView(Player *player) {
             glVertex2f(SCREEN_W, (float)fogStart); glVertex2f(0, (float)fogStart);
             glEnd();
         }
-        glBegin(GL_POINTS);
+        glBegin(GL_QUADS);
         for (y = fogStart; y < SCREEN_H; y += 2) {
             int dy = y - pRef;
             if (dy <= 0) dy = 1;
@@ -106,21 +123,16 @@ void renderRaycastView(Player *player) {
                 float fr, fg2, fb;
                 floorTexColor(fX + sXf * fx, fY + sYf * fx, &fr, &fg2, &fb);
                 glColor3f(fr * fog, fg2 * fog, fb * fog);
-                glVertex2f((float)fx,     (float)y);
-                glVertex2f((float)(fx+1), (float)y);
-                glVertex2f((float)fx,     (float)(y+1));
-                glVertex2f((float)(fx+1), (float)(y+1));
-                if (skip >= 4) {
-                    glVertex2f((float)(fx+2), (float)y);
-                    glVertex2f((float)(fx+3), (float)y);
-                    glVertex2f((float)(fx+2), (float)(y+1));
-                    glVertex2f((float)(fx+3), (float)(y+1));
-                }
+                /* Draw filled rectangle skip×2 to cover all pixels without gaps */
+                glVertex2f((float)fx,          (float)y);
+                glVertex2f((float)(fx + skip),  (float)y);
+                glVertex2f((float)(fx + skip),  (float)(y + 2));
+                glVertex2f((float)fx,           (float)(y + 2));
             }
         }
         glEnd();
     }
-    glBegin(GL_POINTS);
+    glBegin(GL_QUADS);
     for (x = 0; x < SCREEN_W; x++) {
         cameraX = 2.0f * x / (float)SCREEN_W - 1.0f;
         rayDirX = player->dirX + player->planeX * cameraX;
@@ -175,7 +187,11 @@ void renderRaycastView(Player *player) {
                 b = wallColors[wallType][2];
             }
             glColor3f(r * shade * sideDim, g * shade * sideDim, b * shade * sideDim);
-            glVertex2f((float)x, (float)py);
+            /* 1-pixel wide quad per column — no gaps when window is stretched */
+            glVertex2f((float)x,       (float)py);
+            glVertex2f((float)(x + 1), (float)py);
+            glVertex2f((float)(x + 1), (float)(py + 1));
+            glVertex2f((float)x,       (float)(py + 1));
         }
     }
     glEnd();

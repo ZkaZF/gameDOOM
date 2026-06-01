@@ -19,6 +19,9 @@ void playerInit(Player* p) {
     p->moveBackward = 0;
     p->strafeLeft = 0;
     p->strafeRight = 0;
+    p->sprinting = 0;
+    p->jumpVel = 0.0f;
+    p->jumpZ = 0.0f;
 }
 
 void playerUpdateDirection(Player* p) {
@@ -42,7 +45,8 @@ void playerPitch(Player* p, int dy) {
 }
 
 void playerMove(Player* p, float dt) {
-    float spd = MOVE_SPEED * dt * 60.0f;
+    float spdMult = p->sprinting ? SPRINT_MULT : 1.0f;
+    float spd = MOVE_SPEED * spdMult * dt * 60.0f;
     float moveX = 0, moveY = 0;
     float newX, newY;
     if (p->moveForward)  { moveX += p->dirX * spd;   moveY += p->dirY * spd; }
@@ -55,4 +59,13 @@ void playerMove(Player* p, float dt) {
         p->x = newX;
     if (isWalkable(p->x, newY + PLAYER_RADIUS * (moveY > 0 ? 1 : -1)))
         p->y = newY;
+    /* Jump physics */
+    if (p->jumpZ > 0.0f || p->jumpVel > 0.0f) {
+        p->jumpZ += p->jumpVel * dt * 60.0f;
+        p->jumpVel -= GRAVITY * dt * 60.0f;
+        if (p->jumpZ <= 0.0f) {
+            p->jumpZ = 0.0f;
+            p->jumpVel = 0.0f;
+        }
+    }
 }

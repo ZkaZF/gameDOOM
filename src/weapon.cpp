@@ -7,9 +7,10 @@
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 Weapon      gWeapons[NUM_WEAPONS];
-int         gCurrentWeapon = WEAPON_PISTOL;
+int         gCurrentWeapon = WEAPON_NONE;
 Projectile  gProjectiles[MAX_PROJECTILES];
 GLUquadric* gQuad = NULL;
 float       gMuzzleFlash = 0.0f;
@@ -33,6 +34,9 @@ void weaponInit(void) {
     gWeapons[WEAPON_PISTOL].reloadTimer    = 0.0f;
     gWeapons[WEAPON_PISTOL].reloadDuration = 1.2f;
     gWeapons[WEAPON_PISTOL].reloadY        = 0.0f;
+    gWeapons[WEAPON_PISTOL].unlocked       = 0;
+    gWeapons[WEAPON_PISTOL].reserveAmmo    = 0;
+    gWeapons[WEAPON_PISTOL].maxReserveAmmo = 36;  /* 3 mags */
     gWeapons[WEAPON_SHOTGUN].type           = WEAPON_SHOTGUN;
     strcpy(gWeapons[WEAPON_SHOTGUN].name, "SHOTGUN");
     gWeapons[WEAPON_SHOTGUN].ammo           = 6;
@@ -50,6 +54,9 @@ void weaponInit(void) {
     gWeapons[WEAPON_SHOTGUN].reloadTimer    = 0.0f;
     gWeapons[WEAPON_SHOTGUN].reloadDuration = 2.2f;
     gWeapons[WEAPON_SHOTGUN].reloadY        = 0.0f;
+    gWeapons[WEAPON_SHOTGUN].unlocked       = 0;
+    gWeapons[WEAPON_SHOTGUN].reserveAmmo    = 0;
+    gWeapons[WEAPON_SHOTGUN].maxReserveAmmo = 24;  /* 4 mags */
     gWeapons[WEAPON_M416].type           = WEAPON_M416;
     strcpy(gWeapons[WEAPON_M416].name, "M416");
     gWeapons[WEAPON_M416].ammo           = 30;
@@ -67,6 +74,9 @@ void weaponInit(void) {
     gWeapons[WEAPON_M416].reloadTimer    = 0.0f;
     gWeapons[WEAPON_M416].reloadDuration = 2.4f;
     gWeapons[WEAPON_M416].reloadY        = 0.0f;
+    gWeapons[WEAPON_M416].unlocked       = 0;
+    gWeapons[WEAPON_M416].reserveAmmo    = 0;
+    gWeapons[WEAPON_M416].maxReserveAmmo = 90;  /* 3 mags */
     gQuad = gluNewQuadric();
     gluQuadricDrawStyle(gQuad, GLU_FILL);
     gluQuadricNormals(gQuad, GLU_SMOOTH);
@@ -93,8 +103,10 @@ void spawnProjectile(float x, float y, float dx, float dy,
 }
 
 void weaponShoot(Player* player) {
-    Weapon* w = &gWeapons[gCurrentWeapon];
+    Weapon* w;
     int i;
+    if (gCurrentWeapon == WEAPON_NONE) return;
+    w = &gWeapons[gCurrentWeapon];
     if (w->isReloading)         return;
     if (w->timer < w->cooldown) return;
     if (w->ammo <= 0) {
@@ -123,22 +135,41 @@ void weaponShoot(Player* player) {
 }
 
 void weaponReload(void) {
-    Weapon* w = &gWeapons[gCurrentWeapon];
+    Weapon* w;
+    int needed, take;
+    if (gCurrentWeapon == WEAPON_NONE) return;
+    w = &gWeapons[gCurrentWeapon];
     if (w->isReloading) return;
     if (w->ammo >= w->maxAmmo) return;
+    if (w->reserveAmmo <= 0) return;  /* no reserve ammo left */
     w->isReloading = 1;
     w->reloadTimer = 0.0f;
 }
 
 void weaponSwitch(int index) {
     if (index < 0 || index >= NUM_WEAPONS) return;
+    if (!gWeapons[index].unlocked) return;  /* can't switch to locked weapon */
     gCurrentWeapon = index;
     gWeapons[gCurrentWeapon].recoilY = 0.0f;
 }
 
 void weaponUpdate(float dt) {
     int i;
-    Weapon* w = &gWeapons[gCurrentWeapon];
+    Weapon* w;
+    if (gCurrentWeapon == WEAPON_NONE) {
+        /* Still update projectiles even with no weapon */
+        for (i = 0; i < MAX_PROJECTILES; i++) {
+            Projectile* p = &gProjectiles[i];
+            if (!p->active) continue;
+            p->x    += p->dirX * PROJ_SPEED;
+            p->y    += p->dirY * PROJ_SPEED;
+            p->dist += PROJ_SPEED;
+            if (p->dist >= PROJ_MAX_DIST)          { p->active = 0; continue; }
+            if (getMap((int)p->x, (int)p->y) > 0) { p->active = 0; continue; }
+        }
+        return;
+    }
+    w = &gWeapons[gCurrentWeapon];
     w->timer += dt;
     if (w->recoilY > 0.0f) {
         w->recoilY -= dt * 1.2f;
@@ -154,7 +185,10 @@ void weaponUpdate(float dt) {
             if (w->reloadY < 0.0f) w->reloadY = 0.0f;
         }
         if (w->reloadTimer >= w->reloadDuration) {
-            w->ammo       = w->maxAmmo;
+            int needed = w->maxAmmo - w->ammo;
+            int take = (needed < w->reserveAmmo) ? needed : w->reserveAmmo;
+            w->ammo       += take;
+            w->reserveAmmo -= take;
             w->isReloading = 0;
             w->reloadY     = 0.0f;
             w->reloadTimer = 0.0f;
@@ -245,10 +279,15 @@ static void renderM416Model(void) {
 }
 
 void renderWeapon3D(Player* player) {
-    Weapon* w    = &gWeapons[gCurrentWeapon];
-    float aspect = (float)SCREEN_W / (float)SCREEN_H;
-    double t     = (double)glutGet(GLUT_ELAPSED_TIME) / 1000.0;
-    int isMoving = player->moveForward || player->moveBackward ||
+    Weapon* w;
+    float aspect;
+    double t;
+    int isMoving;
+    if (gCurrentWeapon == WEAPON_NONE) return;  /* bare hands */
+    w    = &gWeapons[gCurrentWeapon];
+    aspect = (float)SCREEN_W / (float)SCREEN_H;
+    t     = (double)glutGet(GLUT_ELAPSED_TIME) / 1000.0;
+    isMoving = player->moveForward || player->moveBackward ||
                    player->strafeLeft  || player->strafeRight;
     glClear(GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST); glEnable(GL_LIGHTING); glEnable(GL_LIGHT0);
@@ -360,17 +399,37 @@ void renderProjectiles(Player* player) {
     glMatrixMode(GL_MODELVIEW);  glPopMatrix();
 }
 
-const char* weaponGetName(void)       { return gWeapons[gCurrentWeapon].name; }
-int         weaponGetAmmo(void)       { return gWeapons[gCurrentWeapon].ammo; }
-int         weaponGetMaxAmmo(void)    { return gWeapons[gCurrentWeapon].maxAmmo; }
-int         weaponIsReloading(void)   { return gWeapons[gCurrentWeapon].isReloading; }
+const char* weaponGetName(void)       { return (gCurrentWeapon == WEAPON_NONE) ? "FISTS" : gWeapons[gCurrentWeapon].name; }
+int         weaponGetAmmo(void)       { return (gCurrentWeapon == WEAPON_NONE) ? 0 : gWeapons[gCurrentWeapon].ammo; }
+int         weaponGetMaxAmmo(void)    { return (gCurrentWeapon == WEAPON_NONE) ? 0 : gWeapons[gCurrentWeapon].maxAmmo; }
+int         weaponIsReloading(void)   { return (gCurrentWeapon == WEAPON_NONE) ? 0 : gWeapons[gCurrentWeapon].isReloading; }
 float       weaponGetReloadRatio(void) {
-    Weapon* w = &gWeapons[gCurrentWeapon];
+    Weapon* w;
+    if (gCurrentWeapon == WEAPON_NONE) return 1.0f;
+    w = &gWeapons[gCurrentWeapon];
     if (!w->isReloading) return 1.0f;
     return w->reloadTimer / w->reloadDuration;
 }
 float       weaponGetReadyRatio(void) {
-    Weapon* w = &gWeapons[gCurrentWeapon];
-    float r   = w->timer / w->cooldown;
+    Weapon* w;
+    float r;
+    if (gCurrentWeapon == WEAPON_NONE) return 1.0f;
+    w = &gWeapons[gCurrentWeapon];
+    r   = w->timer / w->cooldown;
     return (r > 1.0f) ? 1.0f : r;
+}
+
+void weaponUnlock(int type) {
+    if (type < 0 || type >= NUM_WEAPONS) return;
+    if (gWeapons[type].unlocked) return;  /* already unlocked */
+    gWeapons[type].unlocked    = 1;
+    gWeapons[type].ammo        = gWeapons[type].maxAmmo;
+    gWeapons[type].reserveAmmo = gWeapons[type].maxReserveAmmo;
+    gWeapons[type].timer       = 9999.0f;
+    printf("[Weapon] Unlocked: %s (ammo %d + reserve %d)\n",
+           gWeapons[type].name, gWeapons[type].ammo, gWeapons[type].reserveAmmo);
+    /* Auto-equip if bare hands */
+    if (gCurrentWeapon == WEAPON_NONE) {
+        gCurrentWeapon = type;
+    }
 }

@@ -6,11 +6,14 @@
 #endif
 
 #define MOVE_SPEED    0.17f
+#define SPRINT_MULT   1.85f
 #define ROT_SPEED     0.03f
 #define MOUSE_SENS    0.003f
 #define MOUSE_SENS_Y  0.30f
 #define PITCH_MAX     180.0f
 #define PLAYER_RADIUS 0.2f
+#define JUMP_VEL      0.15f
+#define GRAVITY       0.012f
 
 typedef struct {
     float x, y;
@@ -25,6 +28,9 @@ typedef struct {
     int moveBackward;
     int strafeLeft;
     int strafeRight;
+    int sprinting;
+    float jumpVel;
+    float jumpZ;     /* vertical offset for jump */
 } Player;
 
 void playerInit(Player* p);

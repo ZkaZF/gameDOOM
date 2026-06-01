@@ -10,7 +10,8 @@
 #define ENEMY_IMP       0
 #define ENEMY_DEMON     1
 #define ENEMY_SPECTRE   2
-#define NUM_ENEMY_TYPES 3
+#define ENEMY_BOSS      3
+#define NUM_ENEMY_TYPES 4
 #define STATE_IDLE      0
 #define STATE_CHASE     1
 #define STATE_ATTACK    2
@@ -23,7 +24,8 @@
 #define ARENA_ACTIVE    1
 #define ARENA_COOLDOWN  2
 #define ARENA_COMPLETE  3
-#define ARENA_TOTAL_WAVES 5
+#define ARENA_TOTAL_WAVES 3
+#define ARENA_BOSS_WAVES  1
 #define ARENA_COOLDOWN_TIME 2.5f
 
 typedef struct {
@@ -40,11 +42,13 @@ typedef struct {
     float deathTimer;
     int   active;
     int   arenaId;
+    int   spriteType;   /* 0=goblin, 1=boss/prabowo */
 } Enemy;
 
 typedef struct {
     int   state;
     int   currentWave;
+    int   maxWaves;       /* jumlah total wave (5 biasa, 1 boss) */
     float cooldownTimer;
     int   waveJustSpawned;
     int   completed;
@@ -62,7 +66,7 @@ typedef struct {
 extern Enemy     gEnemies[MAX_ENEMIES];
 extern int       gNumEnemies;
 extern int       gKillCount;
-extern ArenaRoom gArenas[2];
+extern ArenaRoom gArenas[3];
 extern float     gDamageFlash;
 
 void enemySpawn(int type, float x, float y);

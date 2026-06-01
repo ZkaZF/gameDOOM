@@ -38,6 +38,8 @@ void omprengTryDrop(float x, float y, int enemyType) {
 }
 
 void omprengApplyPickup(Player *player) {
+    extern int gOmprengCollected;
+    gOmprengCollected = 1;
     player->health += 50;
     if (player->health > 100) player->health = 100;
     player->armor += 20;
@@ -143,7 +145,7 @@ static void renderOmprengModel(float bob) {
 void renderOmprengItems(Player *player) {
     int i;
     float det    = player->dirX * player->planeY - player->planeX * player->dirY;
-    int pitchInt = (int)player->pitch;
+    int pitchInt = (int)(player->pitch + player->jumpZ * 120.0f);
     int horizY   = SCREEN_H / 2 + pitchInt;
     if (fabsf(det) < 0.00001f) det = 0.00001f;
     for (i = 0; i < gNumOmpreng; i++) {
@@ -186,51 +188,100 @@ void renderOmprengItems(Player *player) {
         w = fx1 - fx0; h = fy1 - fy0;
         if (w < 1.0f || h < 1.0f) continue;
         if (fadeAlpha < 1.0f) { glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); }
-        glColor4f(SS_R, SS_G, SS_B, fadeAlpha);
-        glBegin(GL_QUADS);
-        glVertex2f(fx0, fy0+h*0.12f); glVertex2f(fx1, fy0+h*0.12f);
-        glVertex2f(fx1, fy1);         glVertex2f(fx0, fy1);
-        glEnd();
-        glColor4f(SS_BRIGHT_R, SS_BRIGHT_G, SS_BRIGHT_B, fadeAlpha);
-        glBegin(GL_QUADS);
-        glVertex2f(fx0, fy0); glVertex2f(fx1, fy0);
-        glVertex2f(fx1, fy0+h*0.12f); glVertex2f(fx0, fy0+h*0.12f);
-        glEnd();
-        glColor4f(SS_DARK_R, SS_DARK_G, SS_DARK_B, fadeAlpha);
-        glBegin(GL_QUADS);
-        glVertex2f(fx0, fy0+h*0.50f); glVertex2f(fx1, fy0+h*0.50f);
-        glVertex2f(fx1, fy0+h*0.54f); glVertex2f(fx0, fy0+h*0.54f);
-        glEnd();
-        glBegin(GL_QUADS);
-        glVertex2f(midX-w*0.33f, fy0+h*0.12f); glVertex2f(midX-w*0.30f, fy0+h*0.12f);
-        glVertex2f(midX-w*0.30f, fy0+h*0.50f); glVertex2f(midX-w*0.33f, fy0+h*0.50f);
-        glEnd();
-        glBegin(GL_QUADS);
-        glVertex2f(midX+w*0.30f, fy0+h*0.12f); glVertex2f(midX+w*0.33f, fy0+h*0.12f);
-        glVertex2f(midX+w*0.33f, fy0+h*0.50f); glVertex2f(midX+w*0.30f, fy0+h*0.50f);
-        glEnd();
-        glBegin(GL_QUADS);
-        glVertex2f(midX+w*0.12f, fy0+h*0.54f); glVertex2f(midX+w*0.15f, fy0+h*0.54f);
-        glVertex2f(midX+w*0.15f, fy1);          glVertex2f(midX+w*0.12f, fy1);
-        glEnd();
+        /* === Baki stainless steel 5 compartment === */
         {
-            float cx = midX + w*0.31f, cy = fy0 + h*0.77f, cr = h*0.20f;
-            int k;
-            glColor4f(SS_DARK_R*0.88f, SS_DARK_G*0.88f, SS_DARK_B*0.88f, fadeAlpha);
-            glBegin(GL_TRIANGLE_FAN);
-            glVertex2f(cx, cy);
-            for (k = 0; k <= 12; k++) {
-                float ang = (float)k * (2.0f * (float)M_PI / 12.0f);
-                glVertex2f(cx + cr * cosf(ang) * 0.85f, cy + cr * sinf(ang));
-            }
+            float pad = w * 0.04f;
+            float L = fx0 + pad, R = fx1 - pad, T = fy0 + pad, B = fy1 - pad;
+            float mw = R - L, mh = B - T;
+            /* Outer tray body */
+            glColor4f(SS_R, SS_G, SS_B, fadeAlpha);
+            glBegin(GL_QUADS);
+            glVertex2f(L, T); glVertex2f(R, T);
+            glVertex2f(R, B); glVertex2f(L, B);
             glEnd();
+            /* Raised rim — bright border */
+            glColor4f(SS_BRIGHT_R, SS_BRIGHT_G, SS_BRIGHT_B, fadeAlpha);
+            glBegin(GL_LINE_LOOP);
+            glVertex2f(L, T); glVertex2f(R, T);
+            glVertex2f(R, B); glVertex2f(L, B);
+            glEnd();
+            glBegin(GL_LINE_LOOP);
+            glVertex2f(L+pad, T+pad); glVertex2f(R-pad, T+pad);
+            glVertex2f(R-pad, B-pad); glVertex2f(L+pad, B-pad);
+            glEnd();
+            /* Dividers */
+            {
+                float divX = L + mw * 0.55f;  /* vertical divider */
+                float divY = T + mh * 0.52f;  /* horizontal divider left side */
+                float divYR = T + mh * 0.48f; /* horizontal divider right side */
+                float g = pad * 0.8f;         /* gap inside compartments */
+                /* Vertical divider */
+                glColor4f(SS_DARK_R, SS_DARK_G, SS_DARK_B, fadeAlpha);
+                glBegin(GL_QUADS);
+                glVertex2f(divX-1, T+g); glVertex2f(divX+1, T+g);
+                glVertex2f(divX+1, B-g); glVertex2f(divX-1, B-g);
+                glEnd();
+                /* Horizontal divider — left side */
+                glBegin(GL_QUADS);
+                glVertex2f(L+g, divY-1); glVertex2f(divX-g, divY-1);
+                glVertex2f(divX-g, divY+1); glVertex2f(L+g, divY+1);
+                glEnd();
+                /* Horizontal divider — right side */
+                glBegin(GL_QUADS);
+                glVertex2f(divX+g, divYR-1); glVertex2f(R-g, divYR-1);
+                glVertex2f(R-g, divYR+1); glVertex2f(divX+g, divYR+1);
+                glEnd();
+                /* Compartment floors — darker recessed areas */
+                glColor4f(SS_DARK_R*0.90f, SS_DARK_G*0.90f, SS_DARK_B*0.90f, fadeAlpha);
+                /* Top-left compartment */
+                glBegin(GL_QUADS);
+                glVertex2f(L+g, T+g); glVertex2f(divX-g, T+g);
+                glVertex2f(divX-g, divY-g); glVertex2f(L+g, divY-g);
+                glEnd();
+                /* Bottom-left compartment (large) */
+                glBegin(GL_QUADS);
+                glVertex2f(L+g, divY+g); glVertex2f(divX-g, divY+g);
+                glVertex2f(divX-g, B-g); glVertex2f(L+g, B-g);
+                glEnd();
+                /* Top-right compartment */
+                glBegin(GL_QUADS);
+                glVertex2f(divX+g, T+g); glVertex2f(R-g, T+g);
+                glVertex2f(R-g, divYR-g); glVertex2f(divX+g, divYR-g);
+                glEnd();
+                /* Bottom-right compartment — round bowl */
+                {
+                    float bcx = (divX + g + R - g) * 0.5f;
+                    float bcy = (divYR + g + B - g) * 0.5f;
+                    float brx = (R - g - divX - g) * 0.42f;
+                    float bry = (B - g - divYR - g) * 0.42f;
+                    int k;
+                    glColor4f(SS_DARK_R*0.85f, SS_DARK_G*0.85f, SS_DARK_B*0.85f, fadeAlpha);
+                    glBegin(GL_TRIANGLE_FAN);
+                    glVertex2f(bcx, bcy);
+                    for (k = 0; k <= 16; k++) {
+                        float ang = (float)k * (2.0f * (float)M_PI / 16.0f);
+                        glVertex2f(bcx + brx * cosf(ang), bcy + bry * sinf(ang));
+                    }
+                    glEnd();
+                    /* Bowl rim */
+                    glColor4f(SS_BRIGHT_R, SS_BRIGHT_G, SS_BRIGHT_B, fadeAlpha * 0.7f);
+                    glBegin(GL_LINE_LOOP);
+                    for (k = 0; k <= 16; k++) {
+                        float ang = (float)k * (2.0f * (float)M_PI / 16.0f);
+                        glVertex2f(bcx + brx * cosf(ang), bcy + bry * sinf(ang));
+                    }
+                    glEnd();
+                }
+            }
+            /* Highlight reflections — diagonal sheen */
+            glColor4f(SS_BRIGHT_R, SS_BRIGHT_G, SS_BRIGHT_B, fadeAlpha * 0.35f);
+            glLineWidth(1.5f);
+            glBegin(GL_LINES);
+            glVertex2f(L+mw*0.08f, T+mh*0.15f); glVertex2f(L+mw*0.25f, T+mh*0.35f);
+            glVertex2f(L+mw*0.65f, T+mh*0.10f); glVertex2f(L+mw*0.80f, T+mh*0.30f);
+            glEnd();
+            glLineWidth(1.0f);
         }
-        glColor4f(SS_BRIGHT_R, SS_BRIGHT_G, SS_BRIGHT_B, fadeAlpha * 0.6f);
-        glLineWidth(1.5f);
-        glBegin(GL_LINES);
-        glVertex2f(fx0+w*0.10f, fy0+h*0.20f); glVertex2f(fx0+w*0.25f, fy0+h*0.35f);
-        glEnd();
-        glLineWidth(1.0f);
         if (fadeAlpha < 1.0f) glDisable(GL_BLEND);
     }
 }

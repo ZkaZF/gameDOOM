@@ -8,6 +8,12 @@ BmpTexture gFloorTex = {NULL, 0, 0};
 BmpTexture gWallTex  = {NULL, 0, 0};
 BmpTexture gEnemySpriteTex = {NULL, 0, 0};
 GLuint     gEnemySpriteGLTex = 0;
+BmpTexture gGoblinSpriteTex = {NULL, 0, 0};
+GLuint     gGoblinSpriteGLTex = 0;
+BmpTexture gBossSpriteTex = {NULL, 0, 0};
+GLuint     gBossSpriteGLTex = 0;
+BmpTexture gChestSpriteTex = {NULL, 0, 0};
+GLuint     gChestSpriteGLTex = 0;
 
 float clampf(float v, float lo, float hi) {
     if (v < lo) return lo;
@@ -95,20 +101,21 @@ void sampleBmpTile(const BmpTexture *tex, float wx, float wy, float tileScale,
 }
 
 void initFloorTexture(void) {
-    if (!loadBMP("Floor.bmp", &gFloorTex)) {
-        fprintf(stderr, "[texture] Floor.bmp not found\n");
+    if (!loadBMP("assets/Floor.bmp", &gFloorTex)) {
+        fprintf(stderr, "[texture] assets/Floor.bmp not found\n");
     }
 }
 
+
 void initWallTexture(void) {
-    if (!loadBMP("Wall.bmp", &gWallTex)) {
-        fprintf(stderr, "[texture] Wall.bmp not found\n");
+    if (!loadBMP("assets/Wall.bmp", &gWallTex)) {
+        fprintf(stderr, "[texture] assets/Wall.bmp not found\n");
     }
 }
 
 void initEnemySpriteTexture(void) {
-    if (!loadBMP("prabowoPixel.bmp", &gEnemySpriteTex)) {
-        fprintf(stderr, "[texture] prabowoPixel.bmp not found\n");
+    if (!loadBMP("assets/prabowoPixel.bmp", &gEnemySpriteTex)) {
+        fprintf(stderr, "[texture] assets/prabowoPixel.bmp not found\n");
         return;
     }
     glGenTextures(1, &gEnemySpriteGLTex);
@@ -135,6 +142,60 @@ void initEnemySpriteTexture(void) {
     glBindTexture(GL_TEXTURE_2D, 0);
     printf("[texture] Enemy sprite uploaded to GPU: %dx%d\n",
            gEnemySpriteTex.width, gEnemySpriteTex.height);
+}
+
+static void uploadSpriteToGL(BmpTexture *src, GLuint *outTex) {
+    int total = src->width * src->height;
+    unsigned char *rgba;
+    int i;
+    glGenTextures(1, outTex);
+    glBindTexture(GL_TEXTURE_2D, *outTex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    rgba = (unsigned char*)malloc(total * 4);
+    for (i = 0; i < total; i++) {
+        unsigned char r = src->pixels[i*3+0];
+        unsigned char g = src->pixels[i*3+1];
+        unsigned char b = src->pixels[i*3+2];
+        rgba[i*4+0] = r; rgba[i*4+1] = g; rgba[i*4+2] = b;
+        rgba[i*4+3] = (r > 230 && g > 230 && b > 230) ? 0 : 255;
+    }
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, src->width, src->height,
+                 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
+    free(rgba);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void initGoblinSpriteTexture(void) {
+    if (!loadBMP("assets/Goblin.bmp", &gGoblinSpriteTex)) {
+        fprintf(stderr, "[texture] assets/Goblin.bmp not found\n");
+        return;
+    }
+    uploadSpriteToGL(&gGoblinSpriteTex, &gGoblinSpriteGLTex);
+    printf("[texture] Goblin sprite uploaded to GPU: %dx%d\n",
+           gGoblinSpriteTex.width, gGoblinSpriteTex.height);
+}
+
+void initBossSpriteTexture(void) {
+    if (!loadBMP("assets/prabowoPixel.bmp", &gBossSpriteTex)) {
+        fprintf(stderr, "[texture] assets/prabowoPixel.bmp not found\n");
+        return;
+    }
+    uploadSpriteToGL(&gBossSpriteTex, &gBossSpriteGLTex);
+    printf("[texture] Boss sprite uploaded to GPU: %dx%d\n",
+           gBossSpriteTex.width, gBossSpriteTex.height);
+}
+
+void initChestSpriteTexture(void) {
+    if (!loadBMP("assets/chest.bmp", &gChestSpriteTex)) {
+        fprintf(stderr, "[texture] assets/chest.bmp not found\n");
+        return;
+    }
+    uploadSpriteToGL(&gChestSpriteTex, &gChestSpriteGLTex);
+    printf("[texture] Chest sprite uploaded to GPU: %dx%d\n",
+           gChestSpriteTex.width, gChestSpriteTex.height);
 }
 
 void sampleWallBilinear(const BmpTexture *tex, float u, float v,

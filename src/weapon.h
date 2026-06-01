@@ -7,9 +7,10 @@
 #define WEAPON_PISTOL   0
 #define WEAPON_SHOTGUN  1
 #define WEAPON_M416     2
+#define WEAPON_NONE    -1
 #define NUM_WEAPONS     3
 #define MAX_PROJECTILES 64
-#define PROJ_SPEED      0.22f
+#define PROJ_SPEED      0.44f
 #define PROJ_MAX_DIST   18.0f
 
 typedef struct {
@@ -37,6 +38,9 @@ typedef struct {
     float reloadTimer;
     float reloadDuration;
     float reloadY;
+    int   unlocked;
+    int   reserveAmmo;
+    int   maxReserveAmmo;
 } Weapon;
 
 extern Weapon      gWeapons[NUM_WEAPONS];
@@ -51,6 +55,7 @@ void        weaponShoot(Player* player);
 void        weaponReload(void);
 void        weaponSwitch(int index);
 void        weaponUpdate(float dt);
+void        weaponUnlock(int type);
 void        renderWeapon3D(Player* player);
 void        renderProjectiles(Player* player);
 const char* weaponGetName(void);

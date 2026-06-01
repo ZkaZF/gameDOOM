@@ -13,6 +13,12 @@ extern BmpTexture gFloorTex;
 extern BmpTexture gWallTex;
 extern BmpTexture gEnemySpriteTex;
 extern GLuint     gEnemySpriteGLTex;
+extern BmpTexture gGoblinSpriteTex;
+extern GLuint     gGoblinSpriteGLTex;
+extern BmpTexture gBossSpriteTex;
+extern GLuint     gBossSpriteGLTex;
+extern BmpTexture gChestSpriteTex;
+extern GLuint     gChestSpriteGLTex;
 
 float clampf(float v, float lo, float hi);
 float lerpf(float a, float b, float t);
@@ -23,6 +29,9 @@ void  sampleBmpTile(const BmpTexture *tex, float wx, float wy, float tileScale,
 void  initFloorTexture(void);
 void  initWallTexture(void);
 void  initEnemySpriteTexture(void);
+void  initGoblinSpriteTexture(void);
+void  initBossSpriteTexture(void);
+void  initChestSpriteTexture(void);
 void  sampleWallBilinear(const BmpTexture *tex, float u, float v,
                           float *r, float *g, float *b);
 
