@@ -6,7 +6,7 @@
 #include "map.h"
 #include "FoodItem.h"
 #include "Ompreng.h"
-#include "audio.h"
+
 #include <GL/glut.h>
 #include <stdio.h>
 #include <string.h>
@@ -15,6 +15,7 @@
 extern int gGameWon;
 extern int gShowControls;
 
+/* Utility untuk merender teks string ke layar menggunakan font bitmap GLUT */
 static void drawText(float x, float y, const char* txt, void* font) {
     const char* c;
     glRasterPos2f(x, y);
@@ -48,28 +49,82 @@ static void strokeRect(float x, float y, float w, float h) {
     glEnd();
 }
 
-static void drawCrosshair(void) {
+/* Merender crosshair ke layar, bisa berupa crosshair hip-fire biasa atau overlay scope saat ADS M416 */
+static void drawCrosshair(Player* player) {
     float cx = SCREEN_W / 2.0f, cy = SCREEN_H / 2.0f;
-    float sz = 10.0f, gap = 4.0f;
-    glLineWidth(2.0f);
-    glColor4f(0.0f, 0.0f, 0.0f, 0.75f);
-    glBegin(GL_LINES);
-        glVertex2f(cx-sz-1, cy+1); glVertex2f(cx-gap-1, cy+1);
-        glVertex2f(cx+gap+1, cy+1); glVertex2f(cx+sz+1, cy+1);
-        glVertex2f(cx+1, cy-sz-1); glVertex2f(cx+1, cy-gap-1);
-        glVertex2f(cx+1, cy+gap+1); glVertex2f(cx+1, cy+sz+1);
-    glEnd();
-    glColor3f(0.05f, 0.95f, 0.35f);
-    glBegin(GL_LINES);
-        glVertex2f(cx-sz, cy); glVertex2f(cx-gap, cy);
-        glVertex2f(cx+gap, cy); glVertex2f(cx+sz, cy);
-        glVertex2f(cx, cy-sz); glVertex2f(cx, cy-gap);
-        glVertex2f(cx, cy+gap); glVertex2f(cx, cy+sz);
-    glEnd();
-    glPointSize(2.5f); glBegin(GL_POINTS); glVertex2f(cx, cy); glEnd();
-    glLineWidth(1.0f); glPointSize(1.0f);
+    int ads = (player->isADS && gCurrentWeapon == WEAPON_M416);
+    if (ads) {
+        /* ---- ADS Scope Overlay ---- */
+        int k;
+        float r = SCREEN_H * 0.28f;  /* scope circle radius */
+        /* No vignette — background stays transparent */
+        /* Scope circle — white outline with shadow */
+        glLineWidth(3.5f);
+        glColor4f(0.0f, 0.0f, 0.0f, 0.55f);
+        glBegin(GL_LINE_LOOP);
+        for (k = 0; k < 64; k++) {
+            float a = (float)k / 64.0f * 2.0f * 3.14159f;
+            glVertex2f(cx + cosf(a)*(r+1.5f), cy + sinf(a)*(r+1.5f));
+        }
+        glEnd();
+        glLineWidth(2.0f);
+        glColor4f(0.95f, 0.95f, 0.90f, 0.90f);
+        glBegin(GL_LINE_LOOP);
+        for (k = 0; k < 64; k++) {
+            float a = (float)k / 64.0f * 2.0f * 3.14159f;
+            glVertex2f(cx + cosf(a)*r, cy + sinf(a)*r);
+        }
+        glEnd();
+        /* Scope crosshair lines */
+        glColor4f(0.0f, 0.0f, 0.0f, 0.60f);
+        glLineWidth(1.5f);
+        glBegin(GL_LINES);
+        /* horizontal */
+        glVertex2f(cx - r, cy); glVertex2f(cx - 8, cy);
+        glVertex2f(cx + 8, cy); glVertex2f(cx + r, cy);
+        /* vertical */
+        glVertex2f(cx, cy - r); glVertex2f(cx, cy - 8);
+        glVertex2f(cx, cy + 8); glVertex2f(cx, cy + r);
+        glEnd();
+        /* Second pass — white lines on top */
+        glColor4f(0.95f, 0.95f, 0.90f, 0.88f);
+        glBegin(GL_LINES);
+        glVertex2f(cx - r + 2, cy); glVertex2f(cx - 10, cy);
+        glVertex2f(cx + 10, cy);    glVertex2f(cx + r - 2, cy);
+        glVertex2f(cx, cy - r + 2); glVertex2f(cx, cy - 10);
+        glVertex2f(cx, cy + 10);    glVertex2f(cx, cy + r - 2);
+        glEnd();
+        /* Center dot */
+        glColor4f(0.95f, 0.95f, 0.90f, 1.0f);
+        glPointSize(3.0f); glBegin(GL_POINTS); glVertex2f(cx, cy); glEnd();
+        /* ADS indicator text */
+        glColor4f(0.85f, 0.95f, 0.85f, 0.80f);
+        drawText(cx - 18, cy + r + 14, "[ADS]", GLUT_BITMAP_HELVETICA_12);
+        glLineWidth(1.0f); glPointSize(1.0f);
+    } else {
+        /* ---- Normal Hip-fire Crosshair ---- */
+        float sz = 10.0f, gap = 4.0f;
+        glLineWidth(2.0f);
+        glColor4f(0.0f, 0.0f, 0.0f, 0.75f);
+        glBegin(GL_LINES);
+            glVertex2f(cx-sz-1, cy+1); glVertex2f(cx-gap-1, cy+1);
+            glVertex2f(cx+gap+1, cy+1); glVertex2f(cx+sz+1, cy+1);
+            glVertex2f(cx+1, cy-sz-1); glVertex2f(cx+1, cy-gap-1);
+            glVertex2f(cx+1, cy+gap+1); glVertex2f(cx+1, cy+sz+1);
+        glEnd();
+        glColor3f(0.05f, 0.95f, 0.35f);
+        glBegin(GL_LINES);
+            glVertex2f(cx-sz, cy); glVertex2f(cx-gap, cy);
+            glVertex2f(cx+gap, cy); glVertex2f(cx+sz, cy);
+            glVertex2f(cx, cy-sz); glVertex2f(cx, cy-gap);
+            glVertex2f(cx, cy+gap); glVertex2f(cx, cy+sz);
+        glEnd();
+        glPointSize(2.5f); glBegin(GL_POINTS); glVertex2f(cx, cy); glEnd();
+        glLineWidth(1.0f); glPointSize(1.0f);
+    }
 }
 
+/* Menggambar background kotak hitam semi-transparan untuk status bar di bagian bawah layar */
 static void drawStatusBarBG(void) {
     float bh = 52.0f;
     glBegin(GL_QUADS);
@@ -84,6 +139,7 @@ static void drawStatusBarBG(void) {
     glLineWidth(1.0f);
 }
 
+/* Menggambar bar indikator Health (HP) pemain dengan warna dinamis (Hijau/Kuning/Merah) */
 static void drawHealthBar(int health) {
     float bx = 20.0f, by = SCREEN_H - 38.0f, bw = 190.0f, bh = 18.0f;
     float r  = (float)health / 100.0f;
@@ -104,6 +160,7 @@ static void drawHealthBar(int health) {
     sprintf(txt, "HP %d", health); drawText(bx+6, by+13, txt, GLUT_BITMAP_HELVETICA_12);
 }
 
+/* Menggambar bar indikator Armor (Biru) di HUD */
 static void drawArmorBar(int armor) {
     float bx = 20.0f, by = SCREEN_H - 62.0f, bw = 190.0f, bh = 14.0f;
     float r  = (float)armor / 100.0f;
@@ -116,6 +173,7 @@ static void drawArmorBar(int armor) {
     sprintf(txt, "ARM %d", armor); drawText(bx+6, by+10, txt, GLUT_BITMAP_HELVETICA_12);
 }
 
+/* Menampilkan panel status arena/wave di bagian tengah atas saat pemain berada di dalam ruangan arena */
 static void drawArenaPanel(void) {
     int ai;
     float py = 14.0f;
@@ -153,18 +211,21 @@ static void drawArenaPanel(void) {
     }
 }
 
+/* Menampilkan indikator sisa amunisi, reserve ammo, reload status, dan cooldown senjata di kanan bawah */
 static void drawAmmoPanel(void) {
-    int   ammo    = weaponGetAmmo();
-    int   maxAmmo = weaponGetMaxAmmo();
-    float ready   = weaponGetReadyRatio();
-    float reload  = weaponGetReloadRatio();
-    int   isRel   = weaponIsReloading();
+    int   ammo        = weaponGetAmmo();
+    int   maxAmmo     = weaponGetMaxAmmo();
+    int   reserveAmmo = weaponGetReserveAmmo();
+    float ready       = weaponGetReadyRatio();
+    float reload      = weaponGetReloadRatio();
+    int   isRel       = weaponIsReloading();
     const char* wname = weaponGetName();
     float panW = 220.0f, panH = 38.0f;
     float px   = SCREEN_W - panW - 16.0f, py = SCREEN_H - panH - 7.0f;
     float ar   = (maxAmmo > 0) ? (float)ammo / (float)maxAmmo : 0.0f;
     char  txt[32];
     double t = (double)glutGet(GLUT_ELAPSED_TIME) / 1000.0;
+    float outOfAmmoTimer = weaponGetOutOfAmmoTimer();
     if (gCurrentWeapon == WEAPON_NONE) {
         /* No weapon — show pick-up hint bottom-right */
         float pulse = 0.60f + 0.40f * (float)sin(t * 2.5);
@@ -175,6 +236,13 @@ static void drawAmmoPanel(void) {
         drawText(hx, SCREEN_H - 18.0f, hint, GLUT_BITMAP_HELVETICA_18);
         return;
     }
+    
+    if (outOfAmmoTimer > 0.0f) {
+        float alpha = (outOfAmmoTimer > 1.0f) ? 1.0f : outOfAmmoTimer;
+        glColor4f(1.0f, 0.2f, 0.2f, alpha);
+        drawText(px + 45.0f, py - 10.0f, "OUT OF AMMO!", GLUT_BITMAP_HELVETICA_18);
+    }
+
     glColor4f(0.08f, 0.08f, 0.08f, 0.90f); fillRect(px-2, py-2, panW+4, panH+4);
     if (isRel) {
         glColor3f(0.85f, 0.55f, 0.05f); fillRect(px, py, (panW-4)*reload, panH*0.45f);
@@ -192,7 +260,7 @@ static void drawAmmoPanel(void) {
         glColor3f(1.0f*pulse, 0.70f*pulse, 0.10f*pulse);
         drawText(px+6, py+30, "RELOADING...", GLUT_BITMAP_HELVETICA_18);
     } else {
-        sprintf(txt, "%d / %d", ammo, maxAmmo);
+        sprintf(txt, "%d / %d", ammo, reserveAmmo);
         glColor3f(0.95f, 0.90f, 0.50f); drawText(px+6, py+30, txt, GLUT_BITMAP_HELVETICA_18);
     }
 }
@@ -242,6 +310,7 @@ static void drawKillCounter(void) {
     drawText(px+6, py+28, txt, GLUT_BITMAP_HELVETICA_12);
 }
 
+/* Menggambar minimap 2D di pojok kanan atas, lengkap dengan posisi musuh dan tembok */
 static void drawMinimap(Player* player) {
     float mSz = 140.0f;
     float mx  = SCREEN_W - mSz - 14.0f, my = 14.0f;
@@ -287,6 +356,7 @@ static void drawDamageFlash(void) {
     glColor4f(0.85f, 0.05f, 0.05f, a); fillRect(0, 0, SCREEN_W, SCREEN_H);
 }
 
+/* Menampilkan checklist progres pengumpulan kelima item makanan/ompreng */
 static void drawItemCollectionPanel(void) {
     const char* names[5] = {"Susu Kotak", "Nasi Putih", "Ayam Goreng", "Telur Ceplok", "Ompreng"};
     int collected[5];
@@ -358,7 +428,7 @@ static void drawVictoryScreen(void) {
     glColor4f(0.25f, 0.85f, 0.35f, 0.60f); strokeRect(bx+3, by+3, bw-6, bh-6);
     /* Title */
     {
-        const char* msg = "VICTORY!";
+        const char* msg = "YOU WIN!";
         int tw = textWidth(msg, GLUT_BITMAP_TIMES_ROMAN_24);
         glColor3f(0.30f * pulse, 1.0f * pulse, 0.40f * pulse);
         drawText(getCenteredTextX(SCREEN_W/2.0f, tw), by + 40, msg, GLUT_BITMAP_TIMES_ROMAN_24);
@@ -439,6 +509,7 @@ static void drawDebugInfo(Player* player) {
     drawText(12, 18, buf, GLUT_BITMAP_HELVETICA_12);
 }
 
+/* Fungsi utama yang memanggil semua elemen HUD 2D (darah, ammo, map, crosshair) untuk digambar ke layer teratas layar */
 void drawHUD(Player* player) {
     glMatrixMode(GL_PROJECTION); glPushMatrix(); glLoadIdentity();
     glOrtho(0, SCREEN_W, SCREEN_H, 0, -1, 1);
@@ -454,7 +525,7 @@ void drawHUD(Player* player) {
         drawGameOver();
     } else {
         drawStatusBarBG();
-        drawCrosshair();
+        drawCrosshair(player);
         drawHealthBar(player->health);
         drawArmorBar(player->armor);
         drawAmmoPanel();
@@ -464,17 +535,7 @@ void drawHUD(Player* player) {
         drawArenaPanel();
         drawMinimap(player);
         drawDebugInfo(player);
-        /* Now Playing song title — kanan bawah kecil */
-        {
-            const char* np = audioGetNowPlaying();
-            if (np && np[0] != '\0') {
-                int tw = textWidth(np, GLUT_BITMAP_HELVETICA_12);
-                float nx = SCREEN_W - (float)tw * SCREEN_W / (float)(glutGet(GLUT_WINDOW_WIDTH) > 0 ? glutGet(GLUT_WINDOW_WIDTH) : SCREEN_W) - 18.0f;
-                float ny = SCREEN_H - 56.0f;
-                glColor4f(0.85f, 0.85f, 0.90f, 0.75f); /* slightly brighter too */
-                drawText(nx, ny, np, GLUT_BITMAP_HELVETICA_12);
-            }
-        }
+
     }
     glDisable(GL_BLEND);
     glMatrixMode(GL_PROJECTION); glPopMatrix();

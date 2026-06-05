@@ -18,6 +18,7 @@ float wallColors[][3] = {
 int   numWallColors = 7;
 float zBuffer[SCREEN_W];
 
+/* Mengambil warna sampel dari tekstur lantai (gFloorTex) pada koordinat dunia (wx, wy), atau warna dasar kotak-kotak (checkerboard) jika tekstur belum ada */
 static void floorTexColor(float wx, float wy, float *r, float *g, float *b) {
     if (gFloorTex.pixels) {
         sampleBmpTile(&gFloorTex, wx, wy, 5.0f, r, g, b);
@@ -29,6 +30,7 @@ static void floorTexColor(float wx, float wy, float *r, float *g, float *b) {
     }
 }
 
+/* Fungsi utama raycasting: melempar sinar per kolom piksel layar (DDA algorithm) untuk merender dinding 3D, serta merender lantai dan langit-langit bertekstur dengan efek kabut kedalaman (fog) */
 void renderRaycastView(Player *player) {
     static int floorTexLoaded = 0;
     if (!floorTexLoaded) {
@@ -95,7 +97,7 @@ void renderRaycastView(Player *player) {
             for (y2 = ceilBot; y2 < SCREEN_H; y2++) {
                 int dy2 = y2 - pRef;
                 if (dy2 <= 0) dy2 = 1;
-                if ((SCREEN_H * 0.5f * WALL_HEIGHT_SCALE) / (float)dy2 < 50.0f) { fogStart = y2; break; }
+                if ((SCREEN_H * 0.5f * WALL_HEIGHT_SCALE * gAdsZoom) / (float)dy2 < 50.0f) { fogStart = y2; break; }
             }
         }
         if (fogStart > ceilBot) {
@@ -109,7 +111,7 @@ void renderRaycastView(Player *player) {
         for (y = fogStart; y < SCREEN_H; y += 2) {
             int dy = y - pRef;
             if (dy <= 0) dy = 1;
-            float rowDist = (SCREEN_H * 0.5f * WALL_HEIGHT_SCALE) / (float)dy;
+            float rowDist = (SCREEN_H * 0.5f * WALL_HEIGHT_SCALE * gAdsZoom) / (float)dy;
             float fog = 1.0f - rowDist / 16.0f;
             if (fog < 0.0f) fog = 0.0f;
             if (fog > 1.0f) fog = 1.0f;
@@ -155,7 +157,7 @@ void renderRaycastView(Player *player) {
             ? (mapX - player->x + (1 - stepX) / 2.0f) / rayDirX
             : (mapY - player->y + (1 - stepY) / 2.0f) / rayDirY;
         zBuffer[x] = perpWallDist;
-        lineHeight  = (int)((SCREEN_H * WALL_HEIGHT_SCALE) / perpWallDist);
+        lineHeight  = (int)((SCREEN_H * WALL_HEIGHT_SCALE * gAdsZoom) / perpWallDist);
         drawStart   = -lineHeight / 2 + SCREEN_H / 2 + pitchInt;
         if (drawStart < 0) drawStart = 0;
         drawEnd = lineHeight / 2 + SCREEN_H / 2 + pitchInt;

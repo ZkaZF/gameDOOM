@@ -3,120 +3,41 @@
 #include <windows.h>
 #include <mmsystem.h>
 #include <stdio.h>
-#include <string.h>
 
 #pragma comment(lib, "winmm.lib")
 
-static int gAudioReady = 0;
-static int gCurrentBGM = -1;  /* -1 = none, 0 = bahlil, 2 = prabowo */
-static char gNowPlaying[128] = "";
+static char gSfxShoot[3][MAX_PATH];
+static char gSfxReload[MAX_PATH];
+static char gSfxFootstep[MAX_PATH];
+static char gSfxEnemyDeath[MAX_PATH];
 
-static char gBahlilAbs[MAX_PATH]  = "";
-static char gPrabowoAbs[MAX_PATH] = "";
-
-static void closeCurrentBGM(void) {
-    mciSendStringA("stop bgm", NULL, 0, NULL);
-    mciSendStringA("close bgm", NULL, 0, NULL);
-    Sleep(50); /* Give MCI time to fully release the device */
-}
-
-static int openAndPlay(const char* absPath, const char* alias, int fromMs, int toMs, int repeat) {
-    char cmd[600];
-    char errBuf[256];
-    MCIERROR err;
-
-    /* Try mpegvideo */
-    sprintf(cmd, "open \"%s\" type mpegvideo alias %s", absPath, alias);
-    err = mciSendStringA(cmd, NULL, 0, NULL);
-    if (err != 0) {
-        mciGetErrorStringA(err, errBuf, sizeof(errBuf));
-        printf("[Audio] mpegvideo err: %s\n", errBuf);
-        /* Retry without type */
-        sprintf(cmd, "open \"%s\" alias %s", absPath, alias);
-        err = mciSendStringA(cmd, NULL, 0, NULL);
-        if (err != 0) {
-            mciGetErrorStringA(err, errBuf, sizeof(errBuf));
-            printf("[Audio] auto err: %s\n", errBuf);
-            return 0;
-        }
-    }
-
-    if (fromMs > 0 || toMs > 0) {
-        if (toMs > 0) {
-            sprintf(cmd, "play %s from %d to %d", alias, fromMs, toMs);
-        } else {
-            sprintf(cmd, "seek %s to %d", alias, fromMs);
-            mciSendStringA(cmd, NULL, 0, NULL);
-            if (repeat) sprintf(cmd, "play %s repeat", alias);
-            else        sprintf(cmd, "play %s", alias);
-        }
-    } else {
-        if (repeat) sprintf(cmd, "play %s repeat", alias);
-        else        sprintf(cmd, "play %s", alias);
-    }
-
-    err = mciSendStringA(cmd, NULL, 0, NULL);
-    if (err != 0) {
-        mciGetErrorStringA(err, errBuf, sizeof(errBuf));
-        printf("[Audio] play err: %s\n", errBuf);
-    }
-    return 1;
-}
-
+/* Menginisialisasi path untuk file audio SFX yang digunakan dalam game */
 void audioInit(void) {
-    GetFullPathNameA("assets/mbg-mas-bahlil-ganteng.mp3", MAX_PATH, gBahlilAbs, NULL);
-    GetFullPathNameA("assets/prabowo_clean.mp3", MAX_PATH, gPrabowoAbs, NULL);
-
-    /* Verify files exist */
-    {
-        DWORD attr;
-        attr = GetFileAttributesA(gBahlilAbs);
-        printf("[Audio] Bahlil: %s [%s]\n", gBahlilAbs, (attr != INVALID_FILE_ATTRIBUTES) ? "EXISTS" : "MISSING");
-        attr = GetFileAttributesA(gPrabowoAbs);
-        printf("[Audio] Prabowo: %s [%s]\n", gPrabowoAbs, (attr != INVALID_FILE_ATTRIBUTES) ? "EXISTS" : "MISSING");
-    }
-
-    closeCurrentBGM();
-    gAudioReady = 1;
-    gCurrentBGM = -1;
-    gNowPlaying[0] = '\0';
+    GetFullPathNameA("assets/sfx_pistol.wav",     MAX_PATH, gSfxShoot[0],    NULL);
+    GetFullPathNameA("assets/sfx_shotgun.wav",    MAX_PATH, gSfxShoot[1],    NULL);
+    GetFullPathNameA("assets/sfx_m416.wav",       MAX_PATH, gSfxShoot[2],    NULL);
+    GetFullPathNameA("assets/sfx_reload.wav",     MAX_PATH, gSfxReload,      NULL);
+    GetFullPathNameA("assets/sfx_footstep.wav",   MAX_PATH, gSfxFootstep,    NULL);
+    GetFullPathNameA("assets/sfx_enemy_death.wav",MAX_PATH, gSfxEnemyDeath,  NULL);
 }
 
-void audioPlayArena(int arenaId) {
-    if (!gAudioReady) return;
-
-    if (arenaId == 0 || arenaId == 1) {
-        if (gCurrentBGM == 0) return;
-        closeCurrentBGM();
-        if (openAndPlay(gBahlilAbs, "bgm", 0, 0, 1)) {
-            gCurrentBGM = 0;
-            sprintf(gNowPlaying, "Now Playing: Mas Bahlil Ganteng");
-            printf("[Audio] Playing: Bahlil BGM (Arena %d)\n", arenaId);
-        }
-    }
-    else if (arenaId == 2) {
-        if (gCurrentBGM == 2) return;
-        closeCurrentBGM();
-        if (openAndPlay(gPrabowoAbs, "bgm", 30000, 62000, 0)) {
-            gCurrentBGM = 2;
-            sprintf(gNowPlaying, "Now Playing: Oke Gas Prabowo Gibran");
-            printf("[Audio] Playing: Prabowo BGM (Boss Room)\n");
-        }
-    }
+/* Memutar sound effect tembakan berdasarkan jenis senjata (0=Pistol, 1=Shotgun, 2=M416) */
+void sfxShoot(int weaponType) {
+    if (weaponType >= 0 && weaponType < 3)
+        PlaySoundA(gSfxShoot[weaponType], NULL, SND_ASYNC | SND_FILENAME | SND_NOSTOP);
 }
 
-void audioStop(void) {
-    if (!gAudioReady) return;
-    closeCurrentBGM();
-    gCurrentBGM = -1;
-    gNowPlaying[0] = '\0';
+/* Memutar sound effect saat senjata sedang di-reload */
+void sfxReload(void) {
+    PlaySoundA(gSfxReload, NULL, SND_ASYNC | SND_FILENAME);
 }
 
-void audioCleanup(void) {
-    audioStop();
-    gAudioReady = 0;
+/* Memutar sound effect langkah kaki pemain saat bergerak */
+void sfxFootstep(void) {
+    PlaySoundA(gSfxFootstep, NULL, SND_ASYNC | SND_FILENAME | SND_NOSTOP);
 }
 
-const char* audioGetNowPlaying(void) {
-    return gNowPlaying;
+/* Memutar sound effect geraman/teriakan saat musuh mati */
+void sfxEnemyDeath(void) {
+    PlaySoundA(gSfxEnemyDeath, NULL, SND_ASYNC | SND_FILENAME | SND_NOSTOP);
 }

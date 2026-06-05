@@ -11,11 +11,13 @@
 Ompreng gOmpreng[MAX_OMPRENG];
 int     gNumOmpreng = 0;
 
+/* Inisialisasi state array untuk semua item ompreng di map */
 void omprengInit(void) {
     memset(gOmpreng, 0, sizeof(gOmpreng));
     gNumOmpreng = 0;
 }
 
+/* Memunculkan item ompreng di koordinat (x,y) tertentu di dunia */
 void omprengSpawn(float x, float y) {
     int i;
     for (i = 0; i < MAX_OMPRENG; i++) {
@@ -32,11 +34,13 @@ void omprengSpawn(float x, float y) {
     }
 }
 
+/* Berpeluang men-drop ompreng ketika musuh (tipe tertentu) mati */
 void omprengTryDrop(float x, float y, int enemyType) {
     int threshold = (enemyType == 1) ? 20 : 5;
     if ((rand() % 100) < threshold) omprengSpawn(x, y);
 }
 
+/* Menerapkan efek buff stat (HP & Armor) saat player mengambil ompreng */
 void omprengApplyPickup(Player *player) {
     extern int gOmprengCollected;
     gOmprengCollected = 1;
@@ -46,6 +50,7 @@ void omprengApplyPickup(Player *player) {
     if (player->armor > 100) player->armor = 100;
 }
 
+/* Update logika ompreng tiap frame (rotasi, lifetime, deteksi pickup) */
 void omprengUpdate(Player *player, float dt) {
     int i;
     for (i = 0; i < gNumOmpreng; i++) {
@@ -87,6 +92,7 @@ static void omprengDividerZ(float z, float x0, float x1, float yBot, float yTop)
     glEnd();
 }
 
+/* Render base kerangka utama dari nampan/ompreng */
 static void omprengRenderFrame(void) {
     const float W2 = 0.300f, D2 = 0.225f, BOT = 0.000f, TOP = 0.080f;
     const float MID = 0.055f, TH = 0.010f;
@@ -142,6 +148,7 @@ static void renderOmprengModel(float bob) {
     glPopMatrix();
 }
 
+/* Render semua item ompreng aktif sebagai sprite/objek 3D ke layar dengan raycasting */
 void renderOmprengItems(Player *player) {
     int i;
     float det    = player->dirX * player->planeY - player->planeX * player->dirY;
@@ -150,7 +157,7 @@ void renderOmprengItems(Player *player) {
     if (fabsf(det) < 0.00001f) det = 0.00001f;
     for (i = 0; i < gNumOmpreng; i++) {
         Ompreng *om = &gOmpreng[i];
-        float dx, dy, tX, tY, bob, fullH, floorY, fadeAlpha;
+        float dx, dy, tX, tY, fullH, floorY, fadeAlpha, rotSway;
         int screenX, behindWall, col, spriteH, spriteW, sX0, sX1, sY0, sY1;
         float fx0, fx1, fy0, fy1, midX, w, h;
         fadeAlpha = 1.0f;
@@ -159,18 +166,21 @@ void renderOmprengItems(Player *player) {
         tX = (player->dirX * dy - player->dirY * dx) / det;
         tY = (player->planeY * dx - player->planeX * dy) / det;
         if (tY <= 0.1f) continue;
+        /* Horizontal sway via rotation angle */
+        rotSway = sinf(om->rotAngle * 0.0174533f) * 0.10f * tY;
         screenX = (int)((float)(SCREEN_W / 2) * (1.0f + tX / tY));
+        screenX += (int)rotSway;
         if (om->lifetime > OMPRENG_LIFETIME - 5.0f) {
             fadeAlpha = (OMPRENG_LIFETIME - om->lifetime) / 5.0f;
             if (fadeAlpha < 0.0f) fadeAlpha = 0.0f;
         }
-        bob     = sinf(om->bobPhase) * 0.06f * tY;
+        /* No bob — item sits on floor */
         fullH   = (float)SCREEN_H * WALL_HEIGHT_SCALE / tY;
         floorY  = (float)horizY + fullH * 0.5f;
         spriteH = (int)(fullH * 0.45f);
         if (spriteH < 2) spriteH = 2;
         spriteW = (int)(spriteH * 1.35f);
-        sY1 = (int)floorY - (int)(fullH * bob);
+        sY1 = (int)floorY;
         sY0 = sY1 - spriteH;
         sX0 = screenX - spriteW / 2;
         sX1 = screenX + spriteW / 2;

@@ -28,6 +28,7 @@ static int gWaveBoss[1][3] = {
     {0, 1, 0},   /* 1 wave: 1 Boss (reuse ENEMY_DEMON slot) */
 };
 
+/* Memunculkan musuh (Imp/Demon/Spectre) di posisi tertentu ke dalam array gEnemies */
 void enemySpawn(int type, float x, float y) {
     Enemy* e;
     if (gNumEnemies >= MAX_ENEMIES) return;
@@ -42,6 +43,7 @@ void enemySpawn(int type, float x, float y) {
     }
 }
 
+/* Memunculkan musuh yang terikat ke arena tertentu, jika Bos maka statnya akan di-override */
 void enemySpawnArena(int type, float x, float y, int arenaId) {
     int slot = -1, i;
     for (i = 0; i < gNumEnemies; i++) {
@@ -74,18 +76,21 @@ void enemySpawnArena(int type, float x, float y, int arenaId) {
     }
 }
 
+/* Mengubah map tile pintu menjadi tembok (mengunci pemain di dalam arena) */
 static void arenaLockDoor(ArenaRoom* a) {
     int i;
     for (i = 0; i < a->numDoorTiles; i++)
         worldMap[a->doorTiles[i][1]][a->doorTiles[i][0]] = 1;
 }
 
+/* Mengubah map tile tembok pintu kembali menjadi jalan/lantai */
 static void arenaUnlockDoor(ArenaRoom* a) {
     int i;
     for (i = 0; i < a->numDoorTiles; i++)
         worldMap[a->doorTiles[i][1]][a->doorTiles[i][0]] = 0;
 }
 
+/* Membaca konfigurasi wave dan memunculkan sejumlah musuh sesuai dengan gelombang saat ini */
 static void arenaSpawnWave(ArenaRoom* a) {
     int w = a->currentWave, i, si;
     int imp, dem, spc;
@@ -112,6 +117,7 @@ static int arenaAliveCount(int arenaId) {
     return c;
 }
 
+/* Menginisialisasi boundary, posisi spawn, dan pintu untuk ketiga area arena (Atas, Bawah, Boss) */
 static void arenaInit(void) {
     int i;
     /* --- Arena 0: Ruangan Atas (Top) --- */
@@ -169,6 +175,7 @@ static void arenaInit(void) {
     sprintf(r->statusMsg, "");
 }
 
+/* Mengupdate logika arena: mendeteksi pemain masuk, memeriksa sisa musuh, dan pindah ke wave selanjutnya */
 static void arenaUpdate(Player* player, float dt) {
     int ai;
     for (ai = 0; ai < 3; ai++) {
@@ -185,7 +192,6 @@ static void arenaUpdate(Player* player, float dt) {
                     player->y >= a->minY && player->y <= a->maxY) {
                     a->state = ARENA_ACTIVE; a->currentWave = 0;
                     arenaLockDoor(a); arenaSpawnWave(a);
-                    audioPlayArena(ai);
                     printf("[Arena %d] Player masuk\n", ai);
                 }
                 break;
@@ -197,7 +203,6 @@ static void arenaUpdate(Player* player, float dt) {
                     if (a->currentWave >= a->maxWaves - 1) {
                         a->state = ARENA_COMPLETE; a->completed = 1;
                         arenaUnlockDoor(a);
-                        audioStop();
                         sprintf(a->statusMsg, "ARENA CLEAR!"); a->statusTimer = 4.0f;
                         printf("[Arena %d] COMPLETED\n", ai);
                     } else {
@@ -227,6 +232,7 @@ static void arenaUpdate(Player* player, float dt) {
     }
 }
 
+/* Mereset semua data musuh dan mengembalikan status arena ke awal ketika game direstart */
 void enemyInitLevel(void) {
     memset(gEnemies, 0, sizeof(gEnemies));
     gNumEnemies = 0; gKillCount = 0; gDamageFlash = 0.0f;
@@ -236,20 +242,26 @@ void enemyInitLevel(void) {
     arenaInit();
 }
 
+/* Mengurangi HP musuh saat tertembak, dan men-drop item jika musuh mati */
 static void enemyHit(Enemy* e, int damage) {
     if (e->state == STATE_DEAD || e->state == STATE_DYING) return;
     e->hp -= (float)damage;
     if (e->hp <= 0.0f) {
         e->hp = 0.0f; e->state = STATE_DYING; e->deathTimer = 0.0f;
         gKillCount++;
+        sfxEnemyDeath();
         /* Drop items based on arena */
         if (e->arenaId == 0) {
             /* Arena Atas: susu kotak / nasi putih */
-            foodSpawn(rand() % 2 == 0 ? FOOD_SUSU_KOTAK : FOOD_NASI_PUTIH, e->x, e->y);
+            float ox = ((rand()%10) - 5) * 0.12f;
+            float oy = ((rand()%10) - 5) * 0.12f;
+            foodSpawn(rand() % 2 == 0 ? FOOD_SUSU_KOTAK : FOOD_NASI_PUTIH, e->x + ox, e->y + oy);
         } else if (e->arenaId == 1) {
             /* Arena Bawah: ayam goreng / telur ceplok / nasi putih */
             int types[] = {FOOD_AYAM_GORENG, FOOD_TELUR_CEPLOK, FOOD_NASI_PUTIH};
-            foodSpawn(types[rand() % 3], e->x, e->y);
+            float ox = ((rand()%10) - 5) * 0.12f;
+            float oy = ((rand()%10) - 5) * 0.12f;
+            foodSpawn(types[rand() % 3], e->x + ox, e->y + oy);
         } else if (e->arenaId == 2) {
             /* Boss Room: Ompreng only */
             omprengSpawn(e->x, e->y);
@@ -259,22 +271,42 @@ static void enemyHit(Enemy* e, int damage) {
     }
 }
 
+static float enemyHitRadius(Enemy* e) {
+    switch (e->type) {
+        case ENEMY_IMP:     return 0.60f;
+        case ENEMY_DEMON:   return 0.90f;
+        case ENEMY_SPECTRE: return 0.45f;
+        default:            return 1.10f; /* boss */
+    }
+}
+
 static void enemyCheckProjectiles(void) {
-    int i, j;
+    int i, j, s;
+    int substeps = 4; /* check along projectile path for tunneling prevention */
     for (j = 0; j < MAX_PROJECTILES; j++) {
         Projectile* p = &gProjectiles[j];
+        float stepX, stepY;
         if (!p->active) continue;
-        for (i = 0; i < gNumEnemies; i++) {
-            Enemy* e = &gEnemies[i];
-            float dx, dy, dist;
-            if (!e->active || e->state == STATE_DEAD || e->state == STATE_DYING) continue;
-            dx = p->x - e->x; dy = p->y - e->y;
-            dist = sqrtf(dx*dx + dy*dy);
-            if (dist < 1.35f) { enemyHit(e, p->damage); p->active = 0; break; }
+        stepX = p->dirX * PROJ_SPEED / (float)substeps;
+        stepY = p->dirY * PROJ_SPEED / (float)substeps;
+        for (s = 0; s < substeps; s++) {
+            float checkX = p->x - stepX * (float)(substeps - 1 - s);
+            float checkY = p->y - stepY * (float)(substeps - 1 - s);
+            for (i = 0; i < gNumEnemies; i++) {
+                Enemy* e = &gEnemies[i];
+                float dx, dy, dist, hitR;
+                if (!e->active || e->state == STATE_DEAD || e->state == STATE_DYING) continue;
+                dx = checkX - e->x; dy = checkY - e->y;
+                dist = sqrtf(dx*dx + dy*dy);
+                hitR = enemyHitRadius(e);
+                if (dist < hitR) { enemyHit(e, p->damage); p->active = 0; break; }
+            }
+            if (!p->active) break;
         }
     }
 }
 
+/* Menjalankan AI musuh (mengejar, menyerang) dan mengecek tabrakan peluru setiap frame */
 void enemyUpdate(Player* player, float dt) {
     int i;
     arenaUpdate(player, dt);
@@ -388,6 +420,7 @@ static void renderSpectreModel(float death) {
     }
     glDisable(GL_BLEND); glPopMatrix();
 }
+/* Merender musuh (sprite 2D billboard) berdasarkan jarak dari terjauh hingga terdekat */
 void renderEnemies(Player* player) {
     int   sortIdx[MAX_ENEMIES];
     float sortDist[MAX_ENEMIES];

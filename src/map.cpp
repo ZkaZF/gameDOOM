@@ -52,6 +52,7 @@ int worldMap[MAP_LOGICAL_H][MAP_LOGICAL_W] = {
  {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
 };
 
+/* Mengambil ID tipe tembok (worldMap) pada koordinat piksel x, y (1 unit map = MAP_SCALE piksel) */
 int getMap(int x, int y) {
     int lx = x / MAP_SCALE;
     int ly = y / MAP_SCALE;
@@ -59,6 +60,7 @@ int getMap(int x, int y) {
     return worldMap[ly][lx];
 }
 
+/* Mengecek apakah koordinat piksel x, y bisa dilewati oleh pemain/musuh (nilai map = 0) */
 int isWalkable(float x, float y) {
     int lx = (int)(x / MAP_SCALE);
     int ly = (int)(y / MAP_SCALE);

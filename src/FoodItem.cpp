@@ -14,6 +14,7 @@ int      gNumFoodItems    = 0;
 int      gFoodCollected[FOOD_TYPE_COUNT] = {0, 0, 0, 0};
 int      gOmprengCollected = 0;
 
+/* Menginisialisasi semua data item makanan dan reset status yang sudah dikumpulkan */
 void foodInit(void) {
     memset(gFoodItems, 0, sizeof(gFoodItems));
     gNumFoodItems = 0;
@@ -21,6 +22,7 @@ void foodInit(void) {
     gOmprengCollected = 0;
 }
 
+/* Memunculkan item makanan dengan jenis tertentu di koordinat (x,y) */
 void foodSpawn(int type, float x, float y) {
     int i;
     for (i = 0; i < MAX_FOOD_ITEMS; i++) {
@@ -37,6 +39,7 @@ void foodSpawn(int type, float x, float y) {
     }
 }
 
+/* Menambahkan health/armor pemain sesuai dengan tipe makanan yang diambil */
 static void foodApplyPickup(int type, Player *player) {
     gFoodCollected[type] = 1;
     switch (type) {
@@ -61,6 +64,7 @@ static void foodApplyPickup(int type, Player *player) {
     }
 }
 
+/* Mengupdate efek animasi bobbing, mengecek kadaluarsa (lifetime), dan deteksi jika player menyentuh makanan */
 void foodUpdate(Player *player, float dt) {
     int i;
     for (i = 0; i < gNumFoodItems; i++) {
@@ -81,6 +85,7 @@ void foodUpdate(Player *player, float dt) {
     }
 }
 
+/* Mengecek apakah semua variasi makanan dan ompreng telah dikumpulkan (Syarat Menang) */
 int foodAllCollected(void) {
     int i;
     for (i = 0; i < FOOD_TYPE_COUNT; i++) {
@@ -148,49 +153,72 @@ static void renderSusuKotak(float fx0, float fy0, float w, float h, float alpha)
 
 static void renderNasiPutih(float fx0, float fy0, float w, float h, float alpha) {
     float midX = fx0 + w * 0.5f;
-    /* Onigiri / Nasi Kepal — segitiga putih rounded */
-    /* Body nasi — segitiga putih dengan ujung atas membulat */
+    /* Onigiri — clean rounded triangle using GL_POLYGON (no bounding-box fill) */
+    /* White nasi body */
     glColor4f(0.98f, 0.98f, 0.94f, alpha);
-    glBegin(GL_TRIANGLES);
-    glVertex2f(midX, fy0 + h*0.05f);               /* puncak */
-    glVertex2f(fx0 + w*0.10f, fy0 + h*0.85f);      /* kiri bawah */
-    glVertex2f(fx0 + w*0.90f, fy0 + h*0.85f);      /* kanan bawah */
+    glBegin(GL_POLYGON);
+    /* Bottom edge — flat */
+    glVertex2f(fx0 + w*0.08f, fy0 + h*0.90f);
+    glVertex2f(fx0 + w*0.92f, fy0 + h*0.90f);
+    /* Right side — curve up */
+    glVertex2f(fx0 + w*0.90f, fy0 + h*0.76f);
+    glVertex2f(fx0 + w*0.84f, fy0 + h*0.60f);
+    glVertex2f(fx0 + w*0.76f, fy0 + h*0.45f);
+    glVertex2f(fx0 + w*0.66f, fy0 + h*0.30f);
+    /* Rounded top */
+    glVertex2f(fx0 + w*0.58f, fy0 + h*0.18f);
+    glVertex2f(fx0 + w*0.52f, fy0 + h*0.13f);
+    glVertex2f(midX,          fy0 + h*0.11f);
+    glVertex2f(fx0 + w*0.48f, fy0 + h*0.13f);
+    glVertex2f(fx0 + w*0.42f, fy0 + h*0.18f);
+    /* Left side — curve down */
+    glVertex2f(fx0 + w*0.34f, fy0 + h*0.30f);
+    glVertex2f(fx0 + w*0.24f, fy0 + h*0.45f);
+    glVertex2f(fx0 + w*0.16f, fy0 + h*0.60f);
+    glVertex2f(fx0 + w*0.10f, fy0 + h*0.76f);
     glEnd();
-    /* Alas rata bawah */
-    glBegin(GL_QUADS);
-    glVertex2f(fx0+w*0.10f, fy0+h*0.82f); glVertex2f(fx0+w*0.90f, fy0+h*0.82f);
-    glVertex2f(fx0+w*0.90f, fy0+h*0.92f); glVertex2f(fx0+w*0.10f, fy0+h*0.92f);
-    glEnd();
-    /* Nori / rumput laut — strip hitam/hijau gelap di bagian bawah */
+    /* Nori — dark strip at bottom (trapezoidal) */
     glColor4f(0.10f, 0.18f, 0.08f, alpha);
     glBegin(GL_QUADS);
-    glVertex2f(fx0+w*0.22f, fy0+h*0.55f); glVertex2f(fx0+w*0.78f, fy0+h*0.55f);
-    glVertex2f(fx0+w*0.82f, fy0+h*0.92f); glVertex2f(fx0+w*0.18f, fy0+h*0.92f);
+    glVertex2f(fx0+w*0.24f, fy0+h*0.60f); glVertex2f(fx0+w*0.76f, fy0+h*0.60f);
+    glVertex2f(fx0+w*0.86f, fy0+h*0.90f); glVertex2f(fx0+w*0.14f, fy0+h*0.90f);
     glEnd();
-    /* Nori texture — garis-garis vertikal tipis */
+    /* Nori texture lines */
     glColor4f(0.15f, 0.25f, 0.12f, alpha * 0.5f);
     glLineWidth(1.0f);
     glBegin(GL_LINES);
-    glVertex2f(midX-w*0.12f, fy0+h*0.58f); glVertex2f(midX-w*0.14f, fy0+h*0.88f);
-    glVertex2f(midX,         fy0+h*0.56f); glVertex2f(midX,         fy0+h*0.88f);
-    glVertex2f(midX+w*0.12f, fy0+h*0.58f); glVertex2f(midX+w*0.14f, fy0+h*0.88f);
+    glVertex2f(midX-w*0.14f, fy0+h*0.63f); glVertex2f(midX-w*0.16f, fy0+h*0.88f);
+    glVertex2f(midX,         fy0+h*0.61f); glVertex2f(midX,         fy0+h*0.88f);
+    glVertex2f(midX+w*0.14f, fy0+h*0.63f); glVertex2f(midX+w*0.16f, fy0+h*0.88f);
     glEnd();
-    /* Outline onigiri */
+    /* Outline */
     glColor4f(0.75f, 0.75f, 0.70f, alpha * 0.6f);
     glBegin(GL_LINE_LOOP);
-    glVertex2f(midX, fy0 + h*0.05f);
-    glVertex2f(fx0 + w*0.10f, fy0 + h*0.85f);
-    glVertex2f(fx0 + w*0.90f, fy0 + h*0.85f);
+    glVertex2f(fx0 + w*0.08f, fy0 + h*0.90f);
+    glVertex2f(fx0 + w*0.10f, fy0 + h*0.76f);
+    glVertex2f(fx0 + w*0.16f, fy0 + h*0.60f);
+    glVertex2f(fx0 + w*0.24f, fy0 + h*0.45f);
+    glVertex2f(fx0 + w*0.34f, fy0 + h*0.30f);
+    glVertex2f(fx0 + w*0.42f, fy0 + h*0.18f);
+    glVertex2f(fx0 + w*0.48f, fy0 + h*0.13f);
+    glVertex2f(midX,          fy0 + h*0.11f);
+    glVertex2f(fx0 + w*0.52f, fy0 + h*0.13f);
+    glVertex2f(fx0 + w*0.58f, fy0 + h*0.18f);
+    glVertex2f(fx0 + w*0.66f, fy0 + h*0.30f);
+    glVertex2f(fx0 + w*0.76f, fy0 + h*0.45f);
+    glVertex2f(fx0 + w*0.84f, fy0 + h*0.60f);
+    glVertex2f(fx0 + w*0.90f, fy0 + h*0.76f);
+    glVertex2f(fx0 + w*0.92f, fy0 + h*0.90f);
     glEnd();
-    /* Butiran nasi — titik-titik kecil tekstur */
+    /* Rice grain dots */
     glColor4f(0.90f, 0.90f, 0.86f, alpha * 0.5f);
     glPointSize(1.5f);
     glBegin(GL_POINTS);
-    glVertex2f(midX-w*0.08f, fy0+h*0.25f);
-    glVertex2f(midX+w*0.10f, fy0+h*0.30f);
-    glVertex2f(midX-w*0.15f, fy0+h*0.42f);
-    glVertex2f(midX+w*0.18f, fy0+h*0.38f);
-    glVertex2f(midX,         fy0+h*0.18f);
+    glVertex2f(midX-w*0.10f, fy0+h*0.30f);
+    glVertex2f(midX+w*0.12f, fy0+h*0.36f);
+    glVertex2f(midX-w*0.04f, fy0+h*0.22f);
+    glVertex2f(midX+w*0.07f, fy0+h*0.46f);
+    glVertex2f(midX,         fy0+h*0.28f);
     glEnd();
     glPointSize(1.0f);
 }
@@ -317,6 +345,7 @@ static void renderTelurCeplok(float fx0, float fy0, float w, float h, float alph
     glEnd();
 }
 
+/* Render seluruh objek makanan aktif di peta menggunakan logika raycaster billboarding */
 void renderFoodItems(Player *player) {
     int i;
     float det    = player->dirX * player->planeY - player->planeX * player->dirY;
@@ -325,27 +354,31 @@ void renderFoodItems(Player *player) {
     if (fabsf(det) < 0.00001f) det = 0.00001f;
     for (i = 0; i < gNumFoodItems; i++) {
         FoodItem *fi = &gFoodItems[i];
-        float dx, dy, tX, tY, bob, fullH, floorY, fadeAlpha;
+        float dx, dy, tX, tY, fullH, floorY, fadeAlpha;
         int screenX, behindWall, col, spriteH, spriteW, sX0, sX1, sY0, sY1;
         float fx0, fx1, fy0, fy1, w, h;
+        float rotSway;
         fadeAlpha = 1.0f;
         if (!fi->active) continue;
         dx = fi->x - player->x; dy = fi->y - player->y;
         tX = (player->dirX * dy - player->dirY * dx) / det;
         tY = (player->planeY * dx - player->planeX * dy) / det;
         if (tY <= 0.1f) continue;
+        /* Horizontal sway using bobPhase as rotation angle */
+        rotSway = sinf(fi->bobPhase) * 0.08f * tY;
         screenX = (int)((float)(SCREEN_W / 2) * (1.0f + tX / tY));
+        screenX += (int)rotSway;
         if (fi->lifetime > FOOD_LIFETIME - 5.0f) {
             fadeAlpha = (FOOD_LIFETIME - fi->lifetime) / 5.0f;
             if (fadeAlpha < 0.0f) fadeAlpha = 0.0f;
         }
-        bob     = sinf(fi->bobPhase) * 0.05f * tY;
+        /* No bob — item sits on floor */
         fullH   = (float)SCREEN_H * WALL_HEIGHT_SCALE / tY;
         floorY  = (float)horizY + fullH * 0.5f;
         spriteH = (int)(fullH * 0.40f);
         if (spriteH < 2) spriteH = 2;
         spriteW = spriteH;
-        sY1 = (int)floorY - (int)(fullH * bob);
+        sY1 = (int)floorY;
         sY0 = sY1 - spriteH;
         sX0 = screenX - spriteW / 2;
         sX1 = screenX + spriteW / 2;

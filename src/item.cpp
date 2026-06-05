@@ -21,6 +21,7 @@ float gWaveTimer   = 0.0f;
 int itemGetScore(void) { return gPlayerScore; }
 int itemGetWave(void)  { return gWave; }
 
+/* Memunculkan item baru dengan tipe spesifik di koordinat dunia (x, y) */
 void itemSpawn(int type, float x, float y) {
     int i;
     for (i = 0; i < MAX_ITEMS; i++) {
@@ -38,6 +39,7 @@ void itemSpawn(int type, float x, float y) {
     }
 }
 
+/* Berpeluang men-drop item ammo/health/armor di koordinat x, y (misal saat musuh mati) */
 void itemTryDrop(float x, float y) {
     int roll = rand() % 100;
     if      (roll < 35) itemSpawn(ITEM_HEALTH, x, y);
@@ -45,6 +47,7 @@ void itemTryDrop(float x, float y) {
     else                itemSpawn(ITEM_ARMOR,   x, y);
 }
 
+/* Inisialisasi awal seluruh state array item dan langsung memunculkan 3 weapon crates di awal level */
 void itemInit(void) {
     int i;
     memset(gItems, 0, sizeof(gItems));
@@ -74,6 +77,7 @@ static void itemCheckWave(float dt) {
     (void)dt;
 }
 
+/* Memberikan efek status (darah, amunisi, senjata baru) saat player berhasil mengambil item */
 static void itemApplyPickup(Item* it, Player* player) {
     switch (it->type) {
         case ITEM_HEALTH:
@@ -105,6 +109,7 @@ static void itemApplyPickup(Item* it, Player* player) {
     }
 }
 
+/* Memperbarui durasi, deteksi pengambilan, animasi berputar, dan menghapus item jika kadaluarsa tiap frame */
 void itemUpdate(Player* player, float dt) {
     int i;
     itemCheckWave(dt);
@@ -132,6 +137,7 @@ void itemUpdate(Player* player, float dt) {
     }
 }
 
+/* Merender semua item yang aktif sebagai sprite billboard 2D di dunia 3D menggunakan raycaster */
 void renderItems(Player* player) {
     int i;
     float det    = player->dirX * player->planeY - player->planeX * player->dirY;
@@ -140,29 +146,32 @@ void renderItems(Player* player) {
     if (fabsf(det) < 0.00001f) det = 0.00001f;
     for (i = 0; i < gNumItems; i++) {
         Item* it = &gItems[i];
-        float dx, dy, tX, tY, fullH, floorY, sScale, bob, fadeAlpha;
+        float dx, dy, tX, tY, fullH, floorY, sScale, fadeAlpha;
         int   screenX, behindWall, col, spriteH, spriteW, sX0, sX1, sY0, sY1;
         float fx0, fx1, fy0, fy1, midX, w, h;
+        float rotSway;
         fadeAlpha = 1.0f;
         if (!it->active) continue;
         dx = it->x - player->x; dy = it->y - player->y;
         tX = (player->dirX * dy - player->dirY * dx) / det;
         tY = (player->planeY * dx - player->planeX * dy) / det;
         if (tY <= 0.1f) continue;
+        /* Horizontal sway for all items (rotation effect) */
+        rotSway = sinf(it->bobPhase) * 0.08f * tY;
         screenX = (int)((float)(SCREEN_W / 2) * (1.0f + tX / tY));
+        screenX += (int)rotSway;
         if (it->lifetime > ITEM_LIFETIME - 4.0f) {
             fadeAlpha = (ITEM_LIFETIME - it->lifetime) / 4.0f;
             if (fadeAlpha < 0.0f) fadeAlpha = 0.0f;
         }
-        /* No bob for crates — always static */
-        bob     = (it->type == ITEM_WEAPON_CRATE) ? 0.0f : sinf(it->bobPhase) * 0.05f * tY;
+        /* No bob — all items sit static on floor */
         fullH   = (float)SCREEN_H * WALL_HEIGHT_SCALE / tY;
         floorY  = (float)horizY + fullH * 0.5f;
         sScale  = 0.40f;
         spriteH = (int)(fullH * sScale);
         if (spriteH < 2) spriteH = 2;
         spriteW = spriteH;
-        sY1 = (int)floorY - (int)(fullH * bob);
+        sY1 = (int)floorY;
         sY0 = sY1 - spriteH;
         sX0 = screenX - spriteW/2; sX1 = screenX + spriteW/2;
         if (sX1 < 0 || sX0 >= SCREEN_W || sY1 < 0 || sY0 >= SCREEN_H) continue;

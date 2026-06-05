@@ -24,6 +24,7 @@ static int windowCenterY   = SCREEN_H / 2;
 static int mouseWarping    = 0;
 static int mouseButtonHeld = 0;
 static int prevTime        = 0;
+/* Fungsi callback utama OpenGL untuk menggambar/me-render seluruh scene layar (3D, HUD, musuh) setiap frame */
 static void display(void) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glMatrixMode(GL_PROJECTION);
@@ -43,12 +44,14 @@ static void display(void) {
     drawHUD(&player);
     glutSwapBuffers();
 }
+/* Fungsi callback OpenGL saat ukuran jendela diubah, menyesuaikan viewport dan mencari center baru */
 static void reshape(int width, int height) {
     if (height == 0) height = 1;
     glViewport(0, 0, width, height);
     windowCenterX = width  / 2;
     windowCenterY = height / 2;
 }
+/* Fungsi callback keyboard untuk menangani input saat tombol ditekan (movement, ganti senjata, jump) */
 static void keyDown(unsigned char key, int x, int y) {
     (void)x; (void)y;
     if (key == 27) { exit(0); }
@@ -70,6 +73,7 @@ static void keyDown(unsigned char key, int x, int y) {
         case 'r': case 'R': weaponReload(); break;
     }
 }
+/* Fungsi callback keyboard untuk mereset status movement saat tombol dilepas */
 static void keyUp(unsigned char key, int x, int y) {
     (void)x; (void)y;
     switch (key) {
@@ -79,12 +83,13 @@ static void keyUp(unsigned char key, int x, int y) {
         case 'd': case 'D': player.strafeRight  = 0; break;
     }
 }
+/* Fungsi callback untuk menangani input spesial keyboard (F5 untuk restart/respawn) */
 static void specialKey(int key, int x, int y) {
     (void)x; (void)y;
     if (key == GLUT_KEY_F5) {
         gGameWon = 0;
         gShowControls = 1;
-        audioStop();
+
         playerInit(&player);
         itemInit();
         omprengInit();
@@ -93,6 +98,7 @@ static void specialKey(int key, int x, int y) {
         enemyInitLevel();
     }
 }
+/* Fungsi callback mouse untuk mengatur arah pandangan/rotasi kamera sesuai pergerakan kursor (First Person look) */
 static void mouseMotion(int x, int y) {
     int dx, dy;
     if (mouseWarping) { mouseWarping = 0; return; }
@@ -105,6 +111,7 @@ static void mouseMotion(int x, int y) {
         glutWarpPointer(windowCenterX, windowCenterY);
     }
 }
+/* Fungsi callback klik mouse untuk aksi menembak (Kiri), ADS zoom (Kanan), dan ganti senjata (Scroll/Side Button) */
 static void mouseButton(int button, int state, int x, int y) {
     (void)x; (void)y;
     if (button == GLUT_LEFT_BUTTON) {
@@ -116,9 +123,15 @@ static void mouseButton(int button, int state, int x, int y) {
             mouseButtonHeld = 0;
         }
     }
+    /* RMB — toggle ADS for M416 only */
+    if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN) {
+        if (gCurrentWeapon == WEAPON_M416 && player.health > 0 && !gShowControls)
+            player.isADS = !player.isADS;
+    }
     if (button == 3) weaponSwitch((gCurrentWeapon + 1) % NUM_WEAPONS);
     if (button == 4) weaponSwitch((gCurrentWeapon - 1 + NUM_WEAPONS) % NUM_WEAPONS);
 }
+/* Game Loop utama yang dieksekusi terus menerus: mengupdate posisi musuh, peluru, pergerakan, deteksi tembakan, dll */
 static void idle(void) {
     int   currTime = glutGet(GLUT_ELAPSED_TIME);
     float dt       = (float)(currTime - prevTime) / 1000.0f;
@@ -146,6 +159,7 @@ static void idle(void) {
     }
     glutPostRedisplay();
 }
+/* Entry point program: inisiasi OpenGL, setup window, me-load seluruh aset, dan memulai GLUT Main Loop */
 int main(int argc, char *argv[]) {
     glutInit(&argc, argv);
     glutInitWindowSize(SCREEN_W, SCREEN_H);

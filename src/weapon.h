@@ -61,8 +61,10 @@ void        renderProjectiles(Player* player);
 const char* weaponGetName(void);
 int         weaponGetAmmo(void);
 int         weaponGetMaxAmmo(void);
+int         weaponGetReserveAmmo(void);
 int         weaponIsReloading(void);
 float       weaponGetReloadRatio(void);
 float       weaponGetReadyRatio(void);
+float       weaponGetOutOfAmmoTimer(void);
 
 #endif

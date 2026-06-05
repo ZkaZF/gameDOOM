@@ -15,6 +15,7 @@ GLuint     gBossSpriteGLTex = 0;
 BmpTexture gChestSpriteTex = {NULL, 0, 0};
 GLuint     gChestSpriteGLTex = 0;
 
+/* Fungsi bantu untuk membatasi nilai v agar tidak melebihi lo dan hi */
 float clampf(float v, float lo, float hi) {
     if (v < lo) return lo;
     if (v > hi) return hi;
@@ -32,6 +33,7 @@ void applyFog(float* r, float* g, float* b, float distance, float maxDist) {
     *b *= fogFactor;
 }
 
+/* Membaca file gambar BMP 24-bit dari disk ke dalam memory RAM (struct BmpTexture) */
 int loadBMP(const char *filename, BmpTexture *tex) {
     FILE *f;
     unsigned char header[54];
@@ -79,6 +81,7 @@ int loadBMP(const char *filename, BmpTexture *tex) {
     return 1;
 }
 
+/* Mengambil warna piksel spesifik (sampling) dari tekstur BMP berdasarkan koordinat UV (wx, wy) */
 void sampleBmpTile(const BmpTexture *tex, float wx, float wy, float tileScale,
                    float *r, float *g, float *b) {
     int tx, ty;
@@ -144,6 +147,7 @@ void initEnemySpriteTexture(void) {
            gEnemySpriteTex.width, gEnemySpriteTex.height);
 }
 
+/* Mengunggah pixel data BMP dari RAM ke VRAM GPU melalui OpenGL glGenTextures */
 static void uploadSpriteToGL(BmpTexture *src, GLuint *outTex) {
     int total = src->width * src->height;
     unsigned char *rgba;

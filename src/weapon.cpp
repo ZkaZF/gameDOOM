@@ -3,6 +3,7 @@
 #include "player.h"
 #include "map.h"
 #include "raycaster.h"
+#include "audio.h"
 #include <GL/glut.h>
 #include <math.h>
 #include <string.h>
@@ -14,7 +15,9 @@ int         gCurrentWeapon = WEAPON_NONE;
 Projectile  gProjectiles[MAX_PROJECTILES];
 GLUquadric* gQuad = NULL;
 float       gMuzzleFlash = 0.0f;
+float       gOutOfAmmoTimer = 0.0f;
 
+/* Inisialisasi statistik, amunisi, waktu reload, dan model 3D untuk semua senjata yang tersedia */
 void weaponInit(void) {
     memset(gProjectiles, 0, sizeof(gProjectiles));
     gWeapons[WEAPON_PISTOL].type           = WEAPON_PISTOL;
@@ -36,7 +39,7 @@ void weaponInit(void) {
     gWeapons[WEAPON_PISTOL].reloadY        = 0.0f;
     gWeapons[WEAPON_PISTOL].unlocked       = 0;
     gWeapons[WEAPON_PISTOL].reserveAmmo    = 0;
-    gWeapons[WEAPON_PISTOL].maxReserveAmmo = 36;  /* 3 mags */
+    gWeapons[WEAPON_PISTOL].maxReserveAmmo = 48;  /* 4 mags */
     gWeapons[WEAPON_SHOTGUN].type           = WEAPON_SHOTGUN;
     strcpy(gWeapons[WEAPON_SHOTGUN].name, "SHOTGUN");
     gWeapons[WEAPON_SHOTGUN].ammo           = 6;
@@ -56,7 +59,7 @@ void weaponInit(void) {
     gWeapons[WEAPON_SHOTGUN].reloadY        = 0.0f;
     gWeapons[WEAPON_SHOTGUN].unlocked       = 0;
     gWeapons[WEAPON_SHOTGUN].reserveAmmo    = 0;
-    gWeapons[WEAPON_SHOTGUN].maxReserveAmmo = 24;  /* 4 mags */
+    gWeapons[WEAPON_SHOTGUN].maxReserveAmmo = 18;  /* 3 mags */
     gWeapons[WEAPON_M416].type           = WEAPON_M416;
     strcpy(gWeapons[WEAPON_M416].name, "M416");
     gWeapons[WEAPON_M416].ammo           = 30;
@@ -76,12 +79,13 @@ void weaponInit(void) {
     gWeapons[WEAPON_M416].reloadY        = 0.0f;
     gWeapons[WEAPON_M416].unlocked       = 0;
     gWeapons[WEAPON_M416].reserveAmmo    = 0;
-    gWeapons[WEAPON_M416].maxReserveAmmo = 90;  /* 3 mags */
+    gWeapons[WEAPON_M416].maxReserveAmmo = 120;  /* 4 mags */
     gQuad = gluNewQuadric();
     gluQuadricDrawStyle(gQuad, GLU_FILL);
     gluQuadricNormals(gQuad, GLU_SMOOTH);
 }
 
+/* Memunculkan proyektil/peluru ke dunia game pada koordinat dan arah tertentu saat menembak */
 void spawnProjectile(float x, float y, float dx, float dy,
                      int dmg, float r, float g, float b) {
     int i;
@@ -102,6 +106,7 @@ void spawnProjectile(float x, float y, float dx, float dy,
     }
 }
 
+/* Menembakkan senjata saat ini, mengurangi ammo, memunculkan proyektil (atau pelet shotgun), dan efek visual/SFX */
 void weaponShoot(Player* player) {
     Weapon* w;
     int i;
@@ -110,21 +115,32 @@ void weaponShoot(Player* player) {
     if (w->isReloading)         return;
     if (w->timer < w->cooldown) return;
     if (w->ammo <= 0) {
-        if (!w->isReloading) { w->isReloading = 1; w->reloadTimer = 0.0f; }
+        if (!w->isReloading) {
+            if (w->reserveAmmo > 0) {
+                w->isReloading = 1; w->reloadTimer = 0.0f;
+            } else {
+                gOutOfAmmoTimer = 1.5f;
+            }
+        }
         return;
     }
+    /* Fire! */
     w->ammo--;
     w->timer   = 0.0f;
     w->recoilY = (gCurrentWeapon == WEAPON_SHOTGUN) ? 0.20f :
                  (gCurrentWeapon == WEAPON_M416)    ? 0.04f : 0.10f;
     gMuzzleFlash = 0.10f;
+    sfxShoot(gCurrentWeapon);
     for (i = 0; i < w->pelletsPerShot; i++) {
         float pDirX, pDirY;
+        float spread = w->spreadAngle;
+        /* ADS reduces spread significantly for M416 */
+        if (gCurrentWeapon == WEAPON_M416 && player->isADS) spread *= 0.25f;
         if (w->pelletsPerShot == 1) {
             pDirX = player->dirX; pDirY = player->dirY;
         } else {
             float t     = (w->pelletsPerShot > 1) ? (float)i / (float)(w->pelletsPerShot - 1) : 0.5f;
-            float angle = -w->spreadAngle + t * (2.0f * w->spreadAngle);
+            float angle = -spread + t * (2.0f * spread);
             float cosA  = cosf(angle); float sinA = sinf(angle);
             pDirX = player->dirX * cosA - player->dirY * sinA;
             pDirY = player->dirX * sinA + player->dirY * cosA;
@@ -134,6 +150,7 @@ void weaponShoot(Player* player) {
     }
 }
 
+/* Memulai proses reload senjata saat ini jika ada sisa amunisi cadangan (reserve) */
 void weaponReload(void) {
     Weapon* w;
     int needed, take;
@@ -141,21 +158,31 @@ void weaponReload(void) {
     w = &gWeapons[gCurrentWeapon];
     if (w->isReloading) return;
     if (w->ammo >= w->maxAmmo) return;
-    if (w->reserveAmmo <= 0) return;  /* no reserve ammo left */
+    if (w->reserveAmmo <= 0) {
+        if (w->ammo <= 0) gOutOfAmmoTimer = 1.5f;
+        return;  /* no reserve ammo left */
+    }
     w->isReloading = 1;
     w->reloadTimer = 0.0f;
+    sfxReload();
 }
 
+/* Mengganti senjata yang sedang digunakan ke indeks senjata yang baru (jika sudah terbuka) */
 void weaponSwitch(int index) {
     if (index < 0 || index >= NUM_WEAPONS) return;
-    if (!gWeapons[index].unlocked) return;  /* can't switch to locked weapon */
+    if (!gWeapons[index].unlocked) return;
     gCurrentWeapon = index;
     gWeapons[gCurrentWeapon].recoilY = 0.0f;
 }
 
+/* Mengupdate timer cooldown tembakan, animasi reload, posisi proyektil, dan collision proyektil tiap frame */
 void weaponUpdate(float dt) {
     int i;
     Weapon* w;
+    if (gOutOfAmmoTimer > 0.0f) {
+        gOutOfAmmoTimer -= dt;
+        if (gOutOfAmmoTimer < 0.0f) gOutOfAmmoTimer = 0.0f;
+    }
     if (gCurrentWeapon == WEAPON_NONE) {
         /* Still update projectiles even with no weapon */
         for (i = 0; i < MAX_PROJECTILES; i++) {
@@ -278,6 +305,7 @@ static void renderM416Model(void) {
     glPushMatrix(); glTranslatef(0.07f, 0.008f, 0.11f); glScalef(0.025f, 0.025f, 0.06f); glutSolidCube(1.0f); glPopMatrix();
 }
 
+/* Render 3D model senjata di tangan pemain, dengan efek bobbing (naik turun), recoil, dan muzzle flash */
 void renderWeapon3D(Player* player) {
     Weapon* w;
     float aspect;
@@ -343,6 +371,7 @@ void renderWeapon3D(Player* player) {
     glDisable(GL_LIGHTING); glDisable(GL_COLOR_MATERIAL); glDisable(GL_DEPTH_TEST);
 }
 
+/* Render semua peluru yang sedang melayang di udara dengan efek cahaya dan jejak menggunakan billboarding 2D */
 void renderProjectiles(Player* player) {
     int   i;
     float det = player->dirX * player->planeY - player->planeX * player->dirY;
@@ -402,6 +431,7 @@ void renderProjectiles(Player* player) {
 const char* weaponGetName(void)       { return (gCurrentWeapon == WEAPON_NONE) ? "FISTS" : gWeapons[gCurrentWeapon].name; }
 int         weaponGetAmmo(void)       { return (gCurrentWeapon == WEAPON_NONE) ? 0 : gWeapons[gCurrentWeapon].ammo; }
 int         weaponGetMaxAmmo(void)    { return (gCurrentWeapon == WEAPON_NONE) ? 0 : gWeapons[gCurrentWeapon].maxAmmo; }
+int         weaponGetReserveAmmo(void) { return (gCurrentWeapon == WEAPON_NONE) ? 0 : gWeapons[gCurrentWeapon].reserveAmmo; }
 int         weaponIsReloading(void)   { return (gCurrentWeapon == WEAPON_NONE) ? 0 : gWeapons[gCurrentWeapon].isReloading; }
 float       weaponGetReloadRatio(void) {
     Weapon* w;
@@ -418,7 +448,9 @@ float       weaponGetReadyRatio(void) {
     r   = w->timer / w->cooldown;
     return (r > 1.0f) ? 1.0f : r;
 }
+float       weaponGetOutOfAmmoTimer(void) { return gOutOfAmmoTimer; }
 
+/* Membuka (unlock) senjata baru, misalnya saat pemain mengambil crate, lalu mengisi peluru secara otomatis */
 void weaponUnlock(int type) {
     if (type < 0 || type >= NUM_WEAPONS) return;
     if (gWeapons[type].unlocked) return;  /* already unlocked */
